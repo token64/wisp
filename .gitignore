@@ -1,0 +1,14 @@
+# Editor / OS
+.cursor/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Si añades Node más adelante
+node_modules/

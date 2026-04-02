@@ -1,0 +1,28 @@
+#loading-spinner-container{
+    display:flex;
+    align-items: center;
+    justify-content: center;
+    height: 440px;
+}
+
+#loading-spinner {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  border: 3px solid #97BE5F;
+  border-radius: 50%;
+  border-top-color: #53801F;
+  animation: spin 1s ease-in-out infinite;
+  -webkit-animation: spin 1s ease-in-out infinite;
+  text-align: center;
+  color: green;
+
+
+}
+
+@keyframes spin {
+  to { -webkit-transform: rotate(360deg); }
+}
+@-webkit-keyframes spin {
+  to { -webkit-transform: rotate(360deg); }
+}

@@ -1,0 +1,123 @@
+.hubsoft-completed-container{
+    padding: 20px;
+    text-align: left;
+}
+
+.hubsoft-result-title{
+    font-size: 2em;
+    font-weight: 200;
+}
+
+.hubsoft-result-text{
+    font-size: 1.5em;
+}
+
+.hubsoft-result-list{
+    list-style-type: circle;
+}
+
+.hubsoft-result-list li{
+    font-size: 1em;
+}
+
+.hubsoft-result-folder-name{
+    font-style: italic;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.hubsoft-result-number{
+    font-weight: 600;
+    font-size: 1.2em;
+}
+
+
+
+.client-erp-details-container{
+    padding: 20px !important;
+}
+
+.client-erp-details-loading{
+    
+}
+
+.client-erp-details-name{
+    font-size: 1.3em;
+    font-weight: bold;
+
+    margin-bottom: 20px;
+}
+
+.client-erp-details-data {
+	text-shadow: none;
+	background: #F0F0F0;
+	padding: 1em;
+	padding: 10px;
+    border: 1px solid black;
+    border-radius: 4px
+}
+
+.renderjson a {
+	text-decoration: none;
+}
+
+.renderjson .disclosure {
+	color: #00d900;
+	font-size: 150%;
+}
+
+.renderjson .syntax {
+	color: black;
+}
+
+.renderjson .string {
+	color: #00d900;
+}
+
+.renderjson .number {
+	color: black;
+}
+
+.renderjson .boolean {
+	color: blue;
+}
+
+.renderjson .key {
+	color: black;
+}
+
+.renderjson .keyword {
+	color: red;
+}
+
+.renderjson .object.syntax {
+	color: lightseagreen;
+}
+
+.renderjson .array.syntax {
+	color: lightsalmon;
+}
+
+
+
+.erp-sync-logs-table{
+    margin-top: 10px;
+    border: 1px solid #757575;
+}
+
+.erp-sync-logs-table td {
+    border: 1px solid #757575;
+}
+
+.sync-log-success{
+    background-color: rgb(221 255 221) !important;
+}
+
+.sync-log-error{
+    background-color: rgb(255, 183, 183);
+}
+
+.erp-sync-log-details-json{
+	border: 1px solid blue;
+    
+}

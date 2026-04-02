@@ -1,0 +1,35 @@
+.map-ui-button {
+    background-color: #fff;
+    border: 0;
+    border-radius: 2px;
+    box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.3);
+    margin-right: 7px;
+    margin-top: 7px;
+    padding: 0 0.5em;
+    font: 400 18px Roboto, Arial, sans-serif;
+    overflow: hidden;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items:center;
+    justify-content: center;
+}
+
+.map-ui-button:hover {
+    background: #ebebeb;
+}
+
+.map-ui-button:focus {
+    background-color: #fff;
+}
+
+.map-ui-button::selection {
+
+}
+
+.map-control-icon{
+    
+}

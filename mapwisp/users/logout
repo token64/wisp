@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>        <title>MAPWISP (v2.17.31) </title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- favicon do sistema -->
+        <link href="/mapwisp/img/favicon.png" type="image/x-icon" rel="icon"/><link href="/mapwisp/img/favicon.png" type="image/x-icon" rel="shortcut icon"/>
+        <!-- Importando Google Maps, e Bibliotecas dependentes -->
+                <script
+            src="https://maps.googleapis.com/maps/api/js?&libraries=places&v=beta&key=YOUR_GOOGLE_MAPS_API_KEY"
+        ></script>
+        <script src="/mapwisp/js/files/markerwithlabel.js"></script>        <script src="/mapwisp/js/files/epoly.js"></script>
+        <!-- arquivos do jquery ui -->
+        <link rel="stylesheet" href="/mapwisp/css/ui/jquery-ui.css"/>        <link rel="stylesheet" href="/mapwisp/css/ui/jquery-ui.structure.css"/>        <link rel="stylesheet" href="/mapwisp/css/ui/jquery-ui.theme.css"/>        <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+        <!-- chamada arquivos css -->
+        <link rel="stylesheet" href="/mapwisp/css/foundation.css?v2.17.31"/>        <link rel="stylesheet" href="/mapwisp/css/foundation.min.css?v2.17.31"/>        <link rel="stylesheet" href="/mapwisp/css/normalize.css?v2.17.31"/>        <link rel="stylesheet" href="/mapwisp/css/custom.css?v2.17.31"/>        <link rel="stylesheet" href="/mapwisp/css/erp_integration_windows.css?v2.17.31"/>        <link rel="stylesheet" href="/mapwisp/css/tomo-animations.css?v2.17.31"/>        <link rel="stylesheet" href="/mapwisp/css/map_styles.css?v2.17.31"/>        <link rel="stylesheet" href="/mapwisp/css/loading_spinner.css?v2.17.31"/>
+        <!-- CSS do jquery.multiselect -->
+        <link rel="stylesheet" href="/mapwisp/css/jquery.multiselect.css"/>
+        <!-- Para visualizacao de arvore dos itens JsTree -->
+        <link rel="stylesheet" href="/mapwisp/css/jstree-theme/jstreestyle.min.css"/>
+        <!-- Para o hopscotch iniciar o tour -->
+        <link rel="stylesheet" href="/mapwisp/css/hopscotch.css"/>
+        <!-- CSS para Select2 -->
+        <link rel="stylesheet" href="/mapwisp/css/select2.min.css"/>        <link rel="stylesheet" href="/mapwisp/css/selectize.default.min.css"/>
+        <script src="/mapwisp/js/files/foundation/vendor/jquery.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.js"></script>        <script src="/mapwisp/js/files/controle.js"></script>
+        <!-- JS para Select2 -->
+        <script src="/mapwisp/js/files/select2.full.min.js"></script>        <script src="/mapwisp/js/files/selectize.min.js"></script>
+        <!-- ERROR HANDLING EARLY -->
+        <script src="/mapwisp/js/files/tomoError.js?v2.17.31"></script>
+        <script src="/mapwisp/js/files/foundation/vendor/fastclick.js"></script>        <script src="/mapwisp/js/files/foundation/vendor/jquery.cookie.js"></script>        <script src="/mapwisp/js/files/foundation/vendor/modernizr.js"></script>        <script src="/mapwisp/js/files/foundation/vendor/placeholder.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.abide.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.accordion.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.alert.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.clearing.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.dropdown.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.equalizer.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.interchange.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.joyride.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.magellan.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.min.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.offcanvas.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.orbit.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.reveal.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.slider.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.tab.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.tooltip.js"></script>        <script src="/mapwisp/js/files/foundation/foundation.topbar.js"></script>
+        <!-- Removendo Lodash de CDN. Não responde para alguns clientes -->
+        <!-- <script src="https://cdn.jsdelivr.net/lodash/4.13.1/lodash.min.js"></script> -->
+        <script src="/mapwisp/js/files/lodash.min.js"></script>
+
+        <!-- arquivo do d3.js usado para desenhar o diagrama hierarquico da rede -->
+        <script src="/mapwisp/js/files/d3.js"></script>        <script src="https://cdn.jsdelivr.net/npm/d3-path@3"></script>
+        <script src="https://cdn.jsdelivr.net/npm/d3-shape@3"></script>
+
+
+        <!-- XML to JSON library, to more easily parse the KML files -->
+        <script src="/mapwisp/js/files/xml2json/jquery.xml2json.js"></script>
+        <!-- jsPDF - gera pdf do relatorio de custo (e outras coisas, caso necessario futuramente) -->
+        <script src="/mapwisp/js/files/jsPDF/jspdf.js"></script>        <script src="/mapwisp/js/files/html2canvas.js"></script>        <script src="/mapwisp/js/files/html2canvas.min.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/addhtml.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/addimage.js"></script>        <script src="/mapwisp/js/files/deflate.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/png_support/zlib.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/png_support/png.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/png_support.js"></script>        <script src="/mapwisp/js/files/canvas2image.js"></script>        
+        <script src="/mapwisp/js/files/jsPDF/plugins/from_html.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/standard_fonts_metrics.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/split_text_to_size.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/cell.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/autotable.js"></script>        <script src="/mapwisp/js/files/jsPDF/plugins/autoprint.js"></script>        <script src="/mapwisp/js/files/FileSaver.js"></script>
+        <!-- PDF.JS - Usado para gerar jpg do PDF gerado pela lib jdPDF -->
+        <script src="/mapwisp/js/files/pdfjs/pdf.js"></script>        <script src="/mapwisp/js/files/pdfjs/pdf.worker.js"></script>
+
+        <!-- JsTree, para visualizacao em arvore e agrupamento de coisas -->
+        <script src="/mapwisp/js/files/jstree.js"></script>
+        <!-- Hopscotch para iniciar o tour pelo tomodat -->
+        <script src="/mapwisp/js/files/hopscotch.js"></script>
+        <!-- Geração de QR Code -->
+        <script src="/mapwisp/js/files/qrcode.js"></script>
+        <!-- Renderizar JSON no HTML -->
+        <script src="/mapwisp/js/files/renderjson.js"></script>
+        <!-- jquery ui para as modais -->
+        <script src="/mapwisp/js/ui/jquery_ui.js"></script>
+        <!-- jquery.multiselect para selecionar varios grupos e projetos -->
+        <script src="/mapwisp/js/files/jquery.multiselect.js"></script>
+        <script src="/mapwisp/js/files/angular.js"></script>        <script src="/mapwisp/js/files/angular-sanitize.js"></script>
+        <!-- arquivos para upload de arquivos usando o angular -->
+        <script src="/mapwisp/js/files/ng-file-upload-shim.js"></script>        <script src="/mapwisp/js/files/ng-file-upload.js"></script>
+        <!-- arquivo para Angular Environment (usado para identificar se esta no ambiente de producao ou desenvolvimento)-->
+        <script src="/mapwisp/js/files/angular-environment.min.js"></script>
+        <!-- arquivos para o spinner -->
+        <script src="/mapwisp/js/files/spin.js/spin.js"></script>        <script src="/mapwisp/js/files/angular-spinner/angular-spinner.min.js"></script>
+        <!-- arquivos da aplicação angularJS -->
+        <script src="/mapwisp/js/app/app.js"></script>
+        <script src="/mapwisp/js/files/angular-locale_pt-br.js"></script>        <script src="/mapwisp/js/files/input-masks-dependencies.js"></script>        <script src="/mapwisp/js/files/input-masks.js"></script>        <script src="/mapwisp/js/files/dirPagination.js"></script>
+        <!-- Marker Clusterer (new version via CDN) -->
+        <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+
+		<!-- Objects -->
+		<script src="/mapwisp/js/objects/levelsEnum.js?v2.17.31"></script>		<script src="/mapwisp/js/objects/modesEnum.js?v2.17.31"></script>
+        <script src="/mapwisp/js/services/dialogService.js"></script>
+        <script src="/mapwisp/ts-app/dist/mapwisp-modern.js?v2.17.31"></script>        <script src="/mapwisp/js/services/itemImagesService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/cablesService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/chatService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/locationsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/notesService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/clientsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/projectsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/tourService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/tipsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/mapService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/postsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/groupsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/regionsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/regionReportsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/accessPointService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/validationService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/functionsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/reservesService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/dioService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/connectionsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/fusionsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/materialsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/rulerService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/viewsService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/fusionsReportService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/painelService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/defaultValuesService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/nodesService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/markersService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/markerImageService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/buildingsService.js?v2.17.31"></script>		<script src="/mapwisp/js/services/levelsAndModesService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/onusService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/financialService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/erpIntegrationService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/smartOltService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/integraOltService.js?v2.17.31"></script>        <script src="/mapwisp/js/services/surveysService.js?v2.17.31"></script>
+        <script src="/mapwisp/js/directives/directives.js?v2.17.31"></script>		<script src="/mapwisp/js/directives/tomoLevels.js?v2.17.31"></script>
+        <script src="/mapwisp/js/controllers/interfaceController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/mapController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/projectsController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/viewsController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/groupsController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/usersController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/profilesController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/materialTypesController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/materialKitsController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/cableTypesController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/accessPointTypesController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/backupsController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/hostTypesController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/routerTypesController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/painelController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/costReportController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/defaultValuesController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/financialController.js?v2.17.31"></script>        <script src="/mapwisp/js/controllers/colorCodesController.js?v2.17.31"></script>
+        <script src="/mapwisp/js/apvisualizer/dist/apv.js?v2.17.31"></script>
+                        
+        <style type="text/css">
+            [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
+                display: none !important;
+            }
+        </style>
+    </head>
+    <body ng-app='mapwisp' ng-cloak>
+
+        <div id="large-12 " >
+            <nav class="top-bar" data-topbar role="navigation">
+  <ul class="title-area">
+    <li class="name columns">
+      <span class="title left"/><img src="/mapwisp/img/logo.png" alt="MAPWISP 2.0" class="tomo-top-logo-img"/></span>
+    </li>
+    <br>
+    <br>
+    <li class="toggle-topbar menu-icon"><a href="#"><span></span></a></li>
+  </ul>
+
+   <section class="top-bar-section hide-for-small-only">
+    <ul class="right buttons-menu">
+      <li ng-controller="InterfaceController">
+      		<img src="/mapwisp/img/icons_menu/whatsapp.png" alt="Suporte por WhatsApp" title="Suporte por WhatsApp" ng-click="openWhatsApp()" class="menu-hight menu-btn-base"/>      </li>
+    </ul>
+  </section>
+</nav>
+
+		
+<script type="text/javascript">
+	//GOOGLE ANALYTICS------------------------------------------------------------------
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	  ga('create', 'UA-REPLACE-WITH-YOUR-ID', 'auto');
+	  ga('set', 'page', '/prelogin');
+	  ga('send', 'pageview');
+	//GOOGLE ANALYTICS------------------------------------------------------------------
+</script>
+
+
+
+<div class="row ">
+
+	<br>
+	<br>
+	
+	<div class="small-12 medium-4 medium-offset-4 columns">
+		<form method="post" accept-charset="utf-8" action="/mapwisp/users/prelogin?q=/mapwisp/webroot/users/prelogin&amp;">		<label id="ident-label" class="text-center label-title" for="ident">Identificador da empresa</label>		<input type="text" name="ident" required="required" autocomplete="off" id="ident"/>		<button class="small-12 button" type="submit">Entrar</button>		</form>	</div>
+
+    <!-- Language Settings -->
+    <div class="language-select-container">
+        <div class="row"> 
+            Selecione o idioma            <br>
+            <div id='language-select' class="small-12 medium-5 large-5 columns language-select">
+                <a href="/mapwisp/users/pt_br">
+                    <img title="Ver essa página em Português (BR)" class="lang-select-img" src="/mapwisp/img/flagspng/br.png">
+                </a>
+                <a href="/mapwisp/users/es_es">
+                    <img title="Ver esta página en español" class="lang-select-img" src="/mapwisp/img/flagspng/es.png">
+                </a>
+                <a href="/mapwisp/users/en_us">
+                    <img title="View this page in English" class="lang-select-img" src="/mapwisp/img/flagspng/us.png">
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+ 
+        </div>
+    </body>
+</html>
+
+
