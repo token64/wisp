@@ -32,6 +32,8 @@
     selectedId: null,
     selectedType: null,
     pendingPoint: null,
+    /** Site (cabecera) usado al colocar mufas nuevas en el mapa */
+    mapFieldContext: { siteId: null },
   };
 
   let hierarchyCache = { buildings: [], orphan_sites: [] };
@@ -101,7 +103,9 @@
     if (mode !== "cable") clearCableDraft(false);
     setStatus(
       mode === "mufa"
-        ? "Clic en el mapa para colocar una mufa."
+        ? state.mapFieldContext.siteId
+          ? `Mufa: clic en el mapa. Cabecera: «${findSite(state.mapFieldContext.siteId)?.name || "site"}».`
+          : "Mufa: clic en el mapa. Tip: clic en un site en «Red de acceso» para enlazar la mufa."
         : mode === "terminal"
           ? "Clic en el mapa para colocar un terminal."
           : mode === "cable"
@@ -202,13 +206,17 @@
         buildings: d.buildings || [],
         orphan_sites: d.orphan_sites || [],
       };
-      renderNetworkTree();
+      renderAllHierarchyTrees();
       fillSiteAndPonSelects();
+      updateMapActiveSiteBanner();
       if (netSelection) renderNetDetail();
     } catch (e) {
       console.error(e);
-      document.getElementById("network-tree").innerHTML =
-        `<p class="sub">Error: ${escapeHtml(e.message)}</p>`;
+      const msg = `<p class="sub">Error: ${escapeHtml(e.message)}</p>`;
+      const ne = document.getElementById("network-tree");
+      if (ne) ne.innerHTML = msg;
+      const mb = document.getElementById("map-hierarchy-body");
+      if (mb) mb.innerHTML = msg;
     }
   }
 
@@ -287,8 +295,10 @@
     if (v) sel.value = v;
   }
 
-  function renderSiteSubtree(site) {
-    let html = `<div class="nt-site" data-id="${site.id}">
+  function renderSiteSubtree(site, activeSiteId) {
+    const siteActive =
+      activeSiteId != null && site.id === activeSiteId ? " nt-site-active" : "";
+    let html = `<div class="nt-site${siteActive}" data-id="${site.id}">
         <div class="nt-head" data-sel="site" data-id="${site.id}" data-building-id="${
           site.building_id != null ? site.building_id : ""
         }">
@@ -333,13 +343,19 @@
     return html;
   }
 
-  function renderNetworkTree() {
-    const el = document.getElementById("network-tree");
+  const HINT_EMPTY_NETWORK =
+    '<p class="sub">Orden: <strong>Edificio</strong> → <strong>Site</strong> (cabecera) → OLT → tarjeta → PON. Pulsa «＋ Edificio».</p>';
+
+  const HINT_EMPTY_MAP =
+    '<p class="sub">Pulsa <strong>＋ Edificio</strong>, luego <strong>＋ Site</strong> en el edificio. Haz clic en un <strong>site</strong> para enlazar nuevas <strong>mufas</strong> en el mapa.</p>';
+
+  function renderHierarchyPanel(el, emptyInnerHtml) {
+    if (!el) return;
+    const activeSiteId = state.mapFieldContext.siteId;
     const blds = hierarchyCache.buildings || [];
     const orphans = hierarchyCache.orphan_sites || [];
     if (!blds.length && !orphans.length) {
-      el.innerHTML =
-        '<p class="sub">Orden: <strong>Edificio</strong> → <strong>Site</strong> (cabecera) → OLT → tarjeta → PON. Pulsa «＋ Edificio».</p>';
+      el.innerHTML = emptyInnerHtml;
       return;
     }
     let html = "";
@@ -353,21 +369,74 @@
           </span>
         </div>`;
       (b.sites || []).forEach((site) => {
-        html += renderSiteSubtree(site);
+        html += renderSiteSubtree(site, activeSiteId);
       });
       html += `</div>`;
     });
     if (orphans.length) {
       html += `<div class="nt-orphan"><p class="sub" style="margin:0.6rem 0 0.35rem">Sites sin edificio</p>`;
       orphans.forEach((site) => {
-        html += renderSiteSubtree(site);
+        html += renderSiteSubtree(site, activeSiteId);
       });
       html += `</div>`;
     }
     el.innerHTML = html;
   }
 
-  document.getElementById("network-tree").addEventListener("click", async (ev) => {
+  function renderAllHierarchyTrees() {
+    renderHierarchyPanel(document.getElementById("network-tree"), HINT_EMPTY_NETWORK);
+    renderHierarchyPanel(document.getElementById("map-hierarchy-body"), HINT_EMPTY_MAP);
+  }
+
+  function renderNetworkTree() {
+    renderAllHierarchyTrees();
+  }
+
+  function applyMapFieldContextFromSelection(type, id) {
+    let siteId = null;
+    if (type === "site") siteId = id;
+    else if (type === "building") siteId = null;
+    else if (type === "olt") {
+      const x = findOlt(id);
+      siteId = x ? x.site.id : null;
+    } else if (type === "card") {
+      const x = findCard(id);
+      siteId = x ? x.site.id : null;
+    } else if (type === "pon") {
+      const x = findPon(id);
+      siteId = x ? x.site.id : null;
+    }
+    state.mapFieldContext.siteId = siteId;
+    updateMapActiveSiteBanner();
+    renderAllHierarchyTrees();
+    if (state.mode === "mufa") {
+      const sid = state.mapFieldContext.siteId;
+      setStatus(
+        sid
+          ? `Mufa: clic en el mapa. Cabecera: «${findSite(sid)?.name || "site"}».`
+          : "Mufa: clic en el mapa. Tip: clic en un site en «Red de acceso» para enlazar la mufa.",
+      );
+    }
+  }
+
+  function updateMapActiveSiteBanner() {
+    const el = document.getElementById("map-active-site-banner");
+    if (!el) return;
+    const sid = state.mapFieldContext.siteId;
+    if (!sid) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
+    const s = findSite(sid);
+    el.hidden = false;
+    el.innerHTML = `<div class="map-active-site-text"><strong>Site en campo:</strong> ${escapeHtml(
+      s ? s.name || "Site #" + sid : "Site #" + sid,
+    )} — nuevas <strong>mufas</strong> enlazan esta cabecera.</div>
+      <button type="button" class="btn-sm" id="map-clear-active-site">Quitar</button>`;
+  }
+
+  async function onHierarchyTreeClick(ev) {
     const delBtn = ev.target.closest("[data-tree-del]");
     if (delBtn) {
       ev.stopPropagation();
@@ -382,6 +451,10 @@
         await api("DELETE", resName, null, delId);
         if (netSelection && netSelection.type === kind && netSelection.id === delId) {
           netSelection = null;
+        }
+        if (kind === "site" && state.mapFieldContext.siteId === delId) {
+          state.mapFieldContext.siteId = null;
+          updateMapActiveSiteBanner();
         }
         document.querySelectorAll(".nt-pon").forEach((n) => n.classList.remove("selected"));
         await loadHierarchy();
@@ -455,10 +528,14 @@
     }
     const ponEl = ev.target.closest(".nt-pon[data-sel=pon]");
     if (ponEl && !ev.target.closest(".tree-del")) {
-      netSelection = { type: "pon", id: Number(ponEl.dataset.id) };
+      const pid = Number(ponEl.dataset.id);
+      netSelection = { type: "pon", id: pid };
+      applyMapFieldContextFromSelection("pon", pid);
       document.querySelectorAll(".nt-pon").forEach((n) => n.classList.remove("selected"));
-      ponEl.classList.add("selected");
-      await loadPonDetail(Number(ponEl.dataset.id));
+      document.querySelectorAll(`.nt-pon[data-sel="pon"][data-id="${pid}"]`).forEach((n) =>
+        n.classList.add("selected"),
+      );
+      await loadPonDetail(pid);
       return;
     }
     const head = ev.target.closest(".nt-head[data-sel]");
@@ -466,10 +543,15 @@
       const t = head.dataset.sel;
       const id = Number(head.dataset.id);
       netSelection = { type: t, id };
+      applyMapFieldContextFromSelection(t, id);
       document.querySelectorAll(".nt-pon").forEach((n) => n.classList.remove("selected"));
       renderNetDetail();
     }
-  });
+  }
+
+  document.getElementById("network-tree").addEventListener("click", onHierarchyTreeClick);
+  const mapHierBody = document.getElementById("map-hierarchy-body");
+  if (mapHierBody) mapHierBody.addEventListener("click", onHierarchyTreeClick);
 
   document.getElementById("btn-add-building").addEventListener("click", async () => {
     const name = prompt("Nombre del edificio / sala / POP físico?");
@@ -492,6 +574,46 @@
     }
   });
   document.getElementById("btn-refresh-tree").addEventListener("click", () => loadHierarchy());
+
+  const mapBtnBuilding = document.getElementById("map-btn-add-building");
+  if (mapBtnBuilding) {
+    mapBtnBuilding.addEventListener("click", () => document.getElementById("btn-add-building").click());
+  }
+  const mapBtnOrphan = document.getElementById("map-btn-add-orphan-site");
+  if (mapBtnOrphan) {
+    mapBtnOrphan.addEventListener("click", () => document.getElementById("btn-add-orphan-site").click());
+  }
+  const mapBtnOlt = document.getElementById("map-btn-add-olt");
+  if (mapBtnOlt) {
+    mapBtnOlt.addEventListener("click", async () => {
+      const sid = state.mapFieldContext.siteId;
+      if (!sid) {
+        alert(
+          "Elige primero un site en el árbol (clic en su nombre) o crea edificio → site. Ahí se anclan las mufas del mapa.",
+        );
+        return;
+      }
+      const name = prompt("Nombre del OLT en el site activo?");
+      if (!name) return;
+      try {
+        await api("POST", "olts", { site_id: sid, name, notes: "" });
+        await loadHierarchy();
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+  }
+  const mapBtnRef = document.getElementById("map-btn-hierarchy-refresh");
+  if (mapBtnRef) mapBtnRef.addEventListener("click", () => loadHierarchy());
+  const mapOpenInv = document.getElementById("map-open-inventory");
+  if (mapOpenInv) mapOpenInv.addEventListener("click", () => switchTab("network"));
+  document.querySelector(".map-hierarchy")?.addEventListener("click", (ev) => {
+    if (ev.target.closest("#map-clear-active-site")) {
+      state.mapFieldContext.siteId = null;
+      updateMapActiveSiteBanner();
+      renderAllHierarchyTrees();
+    }
+  });
 
   function findSite(id) {
     let found = null;
@@ -1078,7 +1200,7 @@
       cache.cables.forEach((r) => renderCable(r));
 
       renderLists();
-      fillSiteAndPonSelects();
+      await loadHierarchy();
       fitBounds();
       setStatus("Listo.");
     } catch (e) {
@@ -1241,7 +1363,7 @@
       splice_count: 0,
       port_count: 8,
       notes: "",
-      site_id: null,
+      site_id: type === "mufas" && state.mapFieldContext.siteId != null ? state.mapFieldContext.siteId : null,
       linked_pon_id: null,
     });
     document.getElementById("f-id").value = "";
