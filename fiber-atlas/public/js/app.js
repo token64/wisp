@@ -155,9 +155,25 @@
     state.map.flyTo([lat, lng], Math.max(state.map.getZoom(), 16), { duration: 0.6 });
   }
 
-  /* ---------- Pestañas ---------- */
+  const TREE_DEL_RESOURCE = {
+    building: "buildings",
+    site: "sites",
+    olt: "olts",
+    card: "olt_cards",
+    pon: "pons",
+  };
+
+  const TREE_DEL_CONFIRM = {
+    building: "¿Borrar edificio? Los sites quedarán sin edificio.",
+    site: "¿Borrar site y todo lo que cuelga (OLT, PON…)?",
+    olt: "¿Borrar OLT y tarjetas / PON asociados?",
+    card: "¿Borrar tarjeta y sus PON?",
+    pon: "¿Borrar este PON?",
+  };
+
+  /* ---------- Pestañas / barra lateral ---------- */
   function switchTab(name) {
-    document.querySelectorAll(".main-tab").forEach((b) => {
+    document.querySelectorAll(".nav-item[data-tab]").forEach((b) => {
       b.classList.toggle("active", b.dataset.tab === name);
       b.setAttribute("aria-selected", b.dataset.tab === name ? "true" : "false");
     });
@@ -173,7 +189,7 @@
     if (name === "budget") loadBudgetData();
   }
 
-  document.querySelectorAll(".main-tab").forEach((btn) => {
+  document.querySelectorAll(".nav-item[data-tab]").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
 
@@ -277,24 +293,36 @@
           site.building_id != null ? site.building_id : ""
         }">
           <span>${escapeHtml(site.name || "Site")}</span>
-          <button type="button" class="btn-sm" data-add-olt="${site.id}">＋ OLT</button>
+          <span class="nt-actions">
+            <button type="button" class="tree-del" data-tree-del="site" data-id="${site.id}" title="Borrar site">✕</button>
+            <button type="button" class="btn-sm" data-add-olt="${site.id}">＋ OLT</button>
+          </span>
         </div>`;
     (site.olts || []).forEach((olt) => {
       html += `<div class="nt-olt" data-id="${olt.id}">
           <div class="nt-head" data-sel="olt" data-id="${olt.id}" data-site-id="${site.id}">
             <span>OLT: ${escapeHtml(olt.name || "#" + olt.id)}</span>
-            <button type="button" class="btn-sm" data-add-card="${olt.id}">＋ Tarjeta</button>
+            <span class="nt-actions">
+              <button type="button" class="tree-del" data-tree-del="olt" data-id="${olt.id}" title="Borrar OLT">✕</button>
+              <button type="button" class="btn-sm" data-add-card="${olt.id}">＋ Tarjeta</button>
+            </span>
           </div>`;
       (olt.olt_cards || []).forEach((card) => {
         html += `<div class="nt-card" data-id="${card.id}">
             <div class="nt-head" data-sel="card" data-id="${card.id}" data-olt-id="${olt.id}">
               <span>${escapeHtml(card.label || "Tarjeta")}</span>
-              <button type="button" class="btn-sm" data-add-pon="${card.id}">＋ PON</button>
+              <span class="nt-actions">
+                <button type="button" class="tree-del" data-tree-del="card" data-id="${card.id}" title="Borrar tarjeta">✕</button>
+                <button type="button" class="btn-sm" data-add-pon="${card.id}">＋ PON</button>
+              </span>
             </div>`;
         (card.pons || []).forEach((pon) => {
           html += `<div class="nt-pon" data-sel="pon" data-id="${pon.id}" data-card-id="${card.id}">
               <span>PON ${pon.pon_number} ${escapeHtml(pon.label || "")}</span>
-              <span class="nt-mini">#${pon.id}</span>
+              <span class="nt-pon-meta">
+                <span class="nt-mini">#${pon.id}</span>
+                <button type="button" class="tree-del" data-tree-del="pon" data-id="${pon.id}" title="Borrar PON">✕</button>
+              </span>
             </div>`;
         });
         html += `</div>`;
@@ -319,7 +347,10 @@
       html += `<div class="nt-building" data-id="${b.id}">
         <div class="nt-head nt-building-head" data-sel="building" data-id="${b.id}">
           <span>Edificio: ${escapeHtml(b.name || "#" + b.id)}</span>
-          <button type="button" class="btn-sm" data-add-site="${b.id}">＋ Site</button>
+          <span class="nt-actions">
+            <button type="button" class="tree-del" data-tree-del="building" data-id="${b.id}" title="Borrar edificio">✕</button>
+            <button type="button" class="btn-sm" data-add-site="${b.id}">＋ Site</button>
+          </span>
         </div>`;
       (b.sites || []).forEach((site) => {
         html += renderSiteSubtree(site);
@@ -337,6 +368,29 @@
   }
 
   document.getElementById("network-tree").addEventListener("click", async (ev) => {
+    const delBtn = ev.target.closest("[data-tree-del]");
+    if (delBtn) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      const kind = delBtn.dataset.treeDel;
+      const delId = Number(delBtn.dataset.id);
+      const resName = TREE_DEL_RESOURCE[kind];
+      const msg = TREE_DEL_CONFIRM[kind];
+      if (!resName || !msg || !Number.isFinite(delId)) return;
+      if (!confirm(msg)) return;
+      try {
+        await api("DELETE", resName, null, delId);
+        if (netSelection && netSelection.type === kind && netSelection.id === delId) {
+          netSelection = null;
+        }
+        document.querySelectorAll(".nt-pon").forEach((n) => n.classList.remove("selected"));
+        await loadHierarchy();
+        renderNetDetail();
+      } catch (e) {
+        alert(e.message);
+      }
+      return;
+    }
     const addSiteUnder = ev.target.closest("[data-add-site]");
     if (addSiteUnder) {
       const name = prompt("Nombre del site (cabecera / POP lógico) en este edificio?");
@@ -400,7 +454,7 @@
       return;
     }
     const ponEl = ev.target.closest(".nt-pon[data-sel=pon]");
-    if (ponEl) {
+    if (ponEl && !ev.target.closest(".tree-del")) {
       netSelection = { type: "pon", id: Number(ponEl.dataset.id) };
       document.querySelectorAll(".nt-pon").forEach((n) => n.classList.remove("selected"));
       ponEl.classList.add("selected");
@@ -500,6 +554,24 @@
       return;
     }
     const { type, id } = netSelection;
+    let exists =
+      type === "building"
+        ? !!findBuilding(id)
+        : type === "site"
+          ? !!findSite(id)
+          : type === "olt"
+            ? !!findOlt(id)
+            : type === "card"
+              ? !!findCard(id)
+              : type === "pon"
+                ? !!findPon(id)
+                : false;
+    if (!exists) {
+      netSelection = null;
+      title.textContent = "Detalle";
+      box.innerHTML = '<p class="sub">Selecciona un elemento en el árbol.</p>';
+      return;
+    }
     if (type === "building") {
       const b = findBuilding(id);
       if (!b) return;

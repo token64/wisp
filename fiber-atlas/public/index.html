@@ -13,22 +13,42 @@
     <link rel="stylesheet" href="css/app.css" />
   </head>
   <body>
-    <nav class="main-tabs" role="tablist">
-      <button type="button" class="main-tab active" data-tab="map" role="tab" aria-selected="true">
-        Mapa
-      </button>
-      <button type="button" class="main-tab" data-tab="network" role="tab">Site / OLT / PON</button>
-      <button type="button" class="main-tab" data-tab="budget" role="tab">Presupuesto</button>
-    </nav>
-
+    <div class="app-shell">
+      <aside class="nav-rail" role="navigation" aria-label="Menú principal">
+        <div class="nav-brand">Fiber Atlas</div>
+        <button
+          type="button"
+          class="nav-item active"
+          data-tab="map"
+          role="tab"
+          aria-selected="true"
+        >
+          <span class="nav-ic" aria-hidden="true">◎</span>
+          <span class="nav-txt">Mapa</span>
+        </button>
+        <button type="button" class="nav-item" data-tab="network" role="tab" aria-selected="false">
+          <span class="nav-ic" aria-hidden="true">▤</span>
+          <span class="nav-label-stack">
+            <span class="nav-txt">Inventario</span>
+            <span class="nav-sub">Site · OLT · PON</span>
+          </span>
+        </button>
+        <button type="button" class="nav-item" data-tab="budget" role="tab" aria-selected="false">
+          <span class="nav-ic" aria-hidden="true">¤</span>
+          <span class="nav-txt">Presupuesto</span>
+        </button>
+        <div class="nav-spacer"></div>
+        <p class="nav-foot">Herramienta local · no es Tomodat</p>
+      </aside>
+      <main class="main-stage">
     <div id="panel-map" class="tab-panel active" data-panel="map">
       <div class="app">
         <aside class="sidebar">
           <header>
             <h1>Fiber Atlas</h1>
             <p class="sub">
-              Mapa: <strong>mufas</strong>, <strong>terminales</strong> y <strong>cables</strong> (mangas).
-              Orden lógico en pestaña <strong>Site / OLT / PON</strong>.
+              Mapa: <strong>mufas</strong>, <strong>terminales</strong> y <strong>cables</strong>. La red
+              lógica está en <strong>Inventario</strong> (menú izquierdo).
             </p>
           </header>
           <div class="tools">
@@ -56,6 +76,7 @@
             1) <strong>Edificio</strong> (sala / POP físico). 2) <strong>Site</strong> (cabecera lógica).
             3) <strong>OLT</strong> → <strong>Tarjeta</strong> → <strong>PON</strong>. Registra
             <strong>potencias</strong> por tramo / splitter / mufa. «Site suelto» solo para migración.
+            <strong>Borrar:</strong> botón <strong>✕</strong> en cada fila o panel <strong>Detalle</strong> (clic en el nombre).
           </p>
           <div class="toolbar-row">
             <button type="button" id="btn-add-building" class="btn-sm">＋ Edificio</button>
@@ -132,7 +153,10 @@
       </div>
     </div>
 
-    <!-- Modal entidades mapa -->
+      </main>
+    </div>
+
+    <!-- Modal entidades mapa (fuera del shell: no los recorta overflow) -->
     <div class="modal-backdrop" id="modal-backdrop" aria-hidden="true">
       <div class="modal modal-wide" role="dialog" aria-modal="true">
         <h3 id="modal-title">Editar</h3>
