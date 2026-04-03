@@ -1,0 +1,18 @@
+#cloud-config
+# Referencia si usas cloud-init fuera de Proxmox (AWS, etc.).
+# En Proxmox suele bastar la pestaña Cloud-Init: usuario ubuntu + clave SSH.
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - qemu-guest-agent
+
+users:
+  - default
+
+ssh_pwauth: false
+
+# Descomenta y pega tu clave pública:
+# ssh_authorized_keys:
+#   - ssh-ed25519 AAAA... comentario@pc

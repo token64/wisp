@@ -10,5 +10,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Volcados “Ver código fuente” del navegador (no versionar)
+view-source*.html
+
 # Si añades Node más adelante
 node_modules/

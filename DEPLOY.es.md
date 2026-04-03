@@ -36,7 +36,28 @@ Sin backend, podrás abrir la página de login en el navegador, pero **no** inic
 
 ## 2) VM Ubuntu 24 en Proxmox
 
-### Copiar el proyecto
+### Crear la VM
+
+Guía paso a paso (ISO o imagen cloud, comandos en el nodo): **`deploy/proxmox/CREAR-VM-UBUNTU24.md`**.
+
+### Desplegar Mapwisp desde Windows (recomendado)
+
+Un solo comando sube el repo y ejecuta nginx + ufw en la VM (requiere **OpenSSH Client**):
+
+```powershell
+cd C:\xampp\htdocs\wisp\deploy\proxmox
+.\Desplegar-Mapwisp.ps1 -VmHost IP_DE_LA_VM -VmUser ubuntu
+```
+
+Equivalente manual: `.\Enviar-Wisp-A-VM.ps1 -VmHost ... -RemoteBootstrap`.
+
+En la VM, `bootstrap-ubuntu24.sh` deja el sitio en `http://IP/mapwisp/users/login`.
+
+### Referencia cloud-init
+
+Ejemplo YAML: `deploy/proxmox/cloud-init-ejemplo.yaml` (en Proxmox suele bastar la pestaña **Cloud-Init** con usuario + SSH).
+
+### Copiar el proyecto a mano
 
 ```bash
 scp -r C:\xampp\htdocs\wisp usuario@IP_VM:/tmp/wisp
@@ -49,8 +70,10 @@ sudo mkdir -p /var/www
 sudo mv /tmp/wisp /var/www/wisp
 sudo chown -R www-data:www-data /var/www/wisp
 cd /var/www/wisp
-sudo bash deploy/ubuntu-24/setup.sh
+sudo bash deploy/proxmox/bootstrap-ubuntu24.sh
 ```
+
+(Equivalente anterior solo nginx, sin guest agent ni ufw automáticos: `sudo bash deploy/ubuntu-24/setup.sh`.)
 
 `WEB_ROOT` alternativo: `sudo WEB_ROOT=/srv/miapp bash deploy/ubuntu-24/setup.sh` (debe existir `/srv/miapp/mapwisp/...`).
 
@@ -58,10 +81,17 @@ Prueba: `http://IP_VM/mapwisp/users/login`
 
 ### Firewall / HTTPS
 
+Si usaste `bootstrap-ubuntu24.sh`, **ufw** ya quedó con SSH y `Nginx Full`. Solo necesitas **certbot** si quieres HTTPS:
+
 ```bash
-sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 sudo apt install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d mapwisp.tudominio.com
+```
+
+Si no usaste el bootstrap, abre el cortafuegos a mano:
+
+```bash
+sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 ```
 
 Sitio nginx: `/etc/nginx/sites-available/mapwisp`
