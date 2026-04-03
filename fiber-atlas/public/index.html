@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Fiber Atlas — fibra, mufas y terminales</title>
+    <title>Fiber Atlas — red pasiva y presupuesto</title>
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -13,37 +13,127 @@
     <link rel="stylesheet" href="css/app.css" />
   </head>
   <body>
-    <div class="app">
-      <aside class="sidebar">
-        <header>
-          <h1>Fiber Atlas</h1>
-          <p class="sub">
-            Marca <strong>mufas</strong>, <strong>terminales</strong> y trazados de
-            <strong>cable</strong> en el mapa. Datos en SQLite (local).
-          </p>
-        </header>
-        <div class="tools">
-          <button type="button" id="mode-none" class="active" data-mode="">
-            Navegar
-          </button>
-          <button type="button" id="mode-mufa" data-mode="mufa">＋ Mufa</button>
-          <button type="button" id="mode-terminal" data-mode="terminal">
-            ＋ Terminal
-          </button>
-          <button type="button" id="mode-cable" data-mode="cable">＋ Cable</button>
-          <button type="button" id="cable-finish" class="danger-outline" disabled>
-            Finalizar cable
-          </button>
-          <button type="button" id="cable-cancel" disabled>Cancelar trazado</button>
-        </div>
-        <div class="list-wrap" id="lists"></div>
-        <div class="status-bar" id="status">Listo.</div>
-      </aside>
-      <div id="map" role="application" aria-label="Mapa"></div>
+    <nav class="main-tabs" role="tablist">
+      <button type="button" class="main-tab active" data-tab="map" role="tab" aria-selected="true">
+        Mapa
+      </button>
+      <button type="button" class="main-tab" data-tab="network" role="tab">Site / OLT / PON</button>
+      <button type="button" class="main-tab" data-tab="budget" role="tab">Presupuesto</button>
+    </nav>
+
+    <div id="panel-map" class="tab-panel active" data-panel="map">
+      <div class="app">
+        <aside class="sidebar">
+          <header>
+            <h1>Fiber Atlas</h1>
+            <p class="sub">
+              Mapa: <strong>mufas</strong>, <strong>terminales</strong> y <strong>cables</strong> (mangas).
+              Orden lógico en pestaña <strong>Site / OLT / PON</strong>.
+            </p>
+          </header>
+          <div class="tools">
+            <button type="button" id="mode-none" class="active" data-mode="">Navegar</button>
+            <button type="button" id="mode-mufa" data-mode="mufa">＋ Mufa</button>
+            <button type="button" id="mode-terminal" data-mode="terminal">＋ Terminal</button>
+            <button type="button" id="mode-cable" data-mode="cable">＋ Cable</button>
+            <button type="button" id="cable-finish" class="danger-outline" disabled>
+              Finalizar cable
+            </button>
+            <button type="button" id="cable-cancel" disabled>Cancelar trazado</button>
+          </div>
+          <div class="list-wrap" id="lists"></div>
+          <div class="status-bar" id="status">Listo.</div>
+        </aside>
+        <div id="map" role="application" aria-label="Mapa"></div>
+      </div>
     </div>
 
+    <div id="panel-network" class="tab-panel" data-panel="network" hidden>
+      <div class="panel-split">
+        <div class="panel-col tree-col">
+          <h2 class="panel-title">Inventario de red</h2>
+          <p class="sub panel-hint">
+            1) Crea un <strong>site</strong> (cabecera). 2) Añade <strong>OLT</strong>. 3)
+            <strong>Tarjetas</strong> (slot). 4) <strong>PON</strong> con número. Luego registra
+            <strong>potencias</strong> por tramo / splitter / mufa.
+          </p>
+          <div class="toolbar-row">
+            <button type="button" id="btn-add-site" class="btn-sm">＋ Site</button>
+            <button type="button" id="btn-refresh-tree" class="btn-sm">Actualizar</button>
+          </div>
+          <div id="network-tree" class="network-tree"></div>
+        </div>
+        <div class="panel-col detail-col">
+          <h2 class="panel-title" id="net-detail-title">Detalle</h2>
+          <div id="network-detail" class="network-detail">
+            <p class="sub">Selecciona un elemento en el árbol o crea uno nuevo.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-budget" class="tab-panel" data-panel="budget" hidden>
+      <div class="budget-wrap">
+        <section class="budget-section">
+          <h2 class="panel-title">Catálogo de precios</h2>
+          <p class="sub">
+            Fibra (m), caja NAP, mufa, manga, preparación de palo, etc. Úsalo al armar un proyecto.
+          </p>
+          <form id="form-catalog" class="inline-form">
+            <input type="text" id="cat-name" placeholder="Nombre" required />
+            <select id="cat-category">
+              <option value="fibra">Fibra / cable</option>
+              <option value="caja_nap">Caja / NAP</option>
+              <option value="mufa">Mufa</option>
+              <option value="manga">Manga</option>
+              <option value="prep_palo">Prep. palo / obra</option>
+              <option value="otro">Otro</option>
+            </select>
+            <input type="number" id="cat-price" placeholder="Precio" min="0" step="0.01" required />
+            <input type="text" id="cat-unit" placeholder="ud / m / km" value="ud" />
+            <button type="submit" class="btn-sm btn-primary">Añadir</button>
+          </form>
+          <div id="catalog-list" class="data-table-wrap"></div>
+        </section>
+        <section class="budget-section">
+          <h2 class="panel-title">Proyectos (presupuesto)</h2>
+          <form id="form-project" class="inline-form">
+            <input type="text" id="proj-name" placeholder="Nombre del proyecto" required />
+            <button type="submit" class="btn-sm btn-primary">Nuevo proyecto</button>
+          </form>
+          <div class="row2 budget-row">
+            <div>
+              <label class="lbl-sm">Proyecto activo</label>
+              <select id="budget-project-select"></select>
+            </div>
+            <div id="project-total" class="project-total">Total: 0,00 €</div>
+          </div>
+          <form id="form-line" class="inline-form">
+            <input type="text" id="line-desc" placeholder="Concepto" required />
+            <select id="line-cat">
+              <option value="fibra">Fibra</option>
+              <option value="caja_nap">Caja NAP</option>
+              <option value="mufa">Mufa</option>
+              <option value="manga">Manga</option>
+              <option value="prep_palo">Prep. palo</option>
+              <option value="otro">Otro</option>
+            </select>
+            <input type="number" id="line-qty" placeholder="Cant." min="0" step="0.01" value="1" />
+            <input type="number" id="line-price" placeholder="P. unit." min="0" step="0.01" required />
+            <button type="submit" class="btn-sm btn-primary">Añadir línea</button>
+          </form>
+          <p class="sub">
+            Puedes rellenar líneas a mano o usar precios del catálogo como referencia (copia mental al
+            rellenar).
+          </p>
+          <div id="lines-list" class="data-table-wrap"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Modal entidades mapa -->
     <div class="modal-backdrop" id="modal-backdrop" aria-hidden="true">
-      <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal modal-wide" role="dialog" aria-modal="true">
         <h3 id="modal-title">Editar</h3>
         <form id="modal-form">
           <input type="hidden" id="f-id" />
@@ -63,9 +153,17 @@
           </div>
 
           <div id="f-mufa-extra">
+            <label for="f-site-id">Site (cabecera)</label>
+            <select id="f-site-id">
+              <option value="">— Ninguno —</option>
+            </select>
+            <label for="f-linked-pon-id">PON hacia esta mufa (opcional)</label>
+            <select id="f-linked-pon-id">
+              <option value="">— Ninguno —</option>
+            </select>
             <label for="f-model">Modelo / tipo</label>
             <input type="text" id="f-model" />
-            <label for="f-splice">Empalmes (aprox.)</label>
+            <label for="f-splice">Empalmes en esta mufa</label>
             <input type="number" id="f-splice" min="0" step="1" />
           </div>
 
@@ -75,9 +173,19 @@
           </div>
 
           <div id="f-cable-extra">
+            <label>Pelos del cable (TIA-598)</label>
+            <div class="fiber-presets" id="fiber-presets">
+              <button type="button" data-fibers="4">4</button>
+              <button type="button" data-fibers="6">6</button>
+              <button type="button" data-fibers="8">8</button>
+              <button type="button" data-fibers="12">12</button>
+              <button type="button" data-fibers="24">24</button>
+              <button type="button" data-fibers="48">48</button>
+              <button type="button" data-fibers="72">72</button>
+            </div>
             <div class="row2">
               <div>
-                <label for="f-fibers">Fibras en el cable</label>
+                <label for="f-fibers">Nº fibras</label>
                 <input type="number" id="f-fibers" min="1" step="1" />
               </div>
               <div>
@@ -85,18 +193,51 @@
                 <input type="color" id="f-color" />
               </div>
             </div>
+            <label for="f-manga">Nombre / ref. manga (tramo)</label>
+            <input type="text" id="f-manga" placeholder="p.ej. Manga calle Mayor" />
+            <label for="f-splice-cable">Empalmes en esta manga</label>
+            <input type="number" id="f-splice-cable" min="0" step="1" value="0" />
           </div>
 
           <label for="f-notes">Notas</label>
           <textarea id="f-notes"></textarea>
 
           <div class="actions-row">
-            <button type="button" class="btn-secondary" id="modal-cancel">
-              Cerrar
+            <button type="button" class="btn-secondary" id="modal-cancel">Cerrar</button>
+            <button type="button" class="btn-secondary" id="btn-fiber-map" style="display: none">
+              Mapa de fibras…
             </button>
             <button type="submit" class="btn-primary">Guardar</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal mapa de fibras (colores) -->
+    <div class="modal-backdrop" id="fiber-modal-backdrop" aria-hidden="true">
+      <div class="modal modal-fiber" role="dialog" aria-modal="true">
+        <h3 id="fiber-modal-title">Pelos del cable</h3>
+        <p class="sub" id="fiber-modal-hint">
+          Toca un color para enlazar ese pelo a un PON o anotar hacia qué mufa/salida va.
+        </p>
+        <div id="fiber-grid" class="fiber-grid"></div>
+        <div id="fiber-editor" class="fiber-editor" hidden>
+          <label>Pelo <strong id="fiber-ed-index"></strong></label>
+          <label for="fiber-ed-target">Enlace / destino</label>
+          <select id="fiber-ed-target">
+            <option value="">— Libre —</option>
+          </select>
+          <label for="fiber-ed-note">Nota (mufa, splitter, etc.)</label>
+          <input type="text" id="fiber-ed-note" placeholder="p.ej. → Mufa calle 2, splitter 1:8" />
+          <div class="actions-row">
+            <button type="button" class="btn-secondary" id="fiber-ed-cancel">Cerrar editor</button>
+            <button type="button" class="btn-primary" id="fiber-ed-save">Aplicar a este pelo</button>
+          </div>
+        </div>
+        <div class="actions-row" style="margin-top: 1rem">
+          <button type="button" class="btn-secondary" id="fiber-modal-close">Cerrar</button>
+          <button type="button" class="btn-primary" id="fiber-modal-save">Guardar en cable</button>
+        </div>
       </div>
     </div>
 
