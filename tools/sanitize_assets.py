@@ -1,19 +1,48 @@
 # -*- coding: utf-8 -*-
+"""Replace leaked tenant-specific strings in mapwisp/ with safe placeholders.
+
+Copy ``sanitize_replacements.example.json`` to ``sanitize_replacements.local.json``
+(same folder; that file is gitignored) and list [old, new] pairs under ``replacements``.
+If ``sanitize_replacements.local.json`` is missing, no string replacements run;
+the optional ``app.js`` production-domain line tweak still runs when applicable.
+"""
+from __future__ import annotations
+
+import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent / "mapwisp"
-
-REPLACEMENTS = [
-    ("AIzaSyA8Y3lJDbcrjKIjONGF2qHcoUU-LcHopUk", "YOUR_GOOGLE_MAPS_API_KEY"),
-    ("UA-83746058-1", "UA-REPLACE-WITH-YOUR-ID"),
-    ("https://wa.me/5542988068865", "https://wa.me/REPLACE_E164_SIN_SIGNOS"),
-]
+_TOOLS = Path(__file__).resolve().parent
+_LOCAL_JSON = _TOOLS / "sanitize_replacements.local.json"
 
 
-def patch_file(p: Path) -> bool:
+def load_replacements() -> list[tuple[str, str]]:
+    if not _LOCAL_JSON.exists():
+        print(
+            "Note: no tools/sanitize_replacements.local.json — skipping string replacements.",
+            file=sys.stderr,
+        )
+        print(
+            "  Copy sanitize_replacements.example.json to sanitize_replacements.local.json",
+            file=sys.stderr,
+        )
+        return []
+    data = json.loads(_LOCAL_JSON.read_text(encoding="utf-8"))
+    raw = data.get("replacements", [])
+    out: list[tuple[str, str]] = []
+    for item in raw:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            raise ValueError("Each replacement must be [old_string, new_string]")
+        a, b = item
+        out.append((str(a), str(b)))
+    return out
+
+
+def patch_file(p: Path, replacements: list[tuple[str, str]]) -> bool:
     text = p.read_text(encoding="utf-8", errors="strict")
     orig = text
-    for a, b in REPLACEMENTS:
+    for a, b in replacements:
         text = text.replace(a, b)
     if text != orig:
         p.write_text(text, encoding="utf-8", newline="\n")
@@ -21,13 +50,15 @@ def patch_file(p: Path) -> bool:
     return False
 
 
-def main():
-    touched = []
+def main() -> None:
+    replacements = load_replacements()
+    touched: list[Path] = []
+
     for sub in (ROOT / "js" / "controllers").glob("*.js"):
-        if patch_file(sub):
+        if patch_file(sub, replacements):
             touched.append(sub)
     cs = ROOT / "js" / "services" / "chatService.js"
-    if cs.exists() and patch_file(cs):
+    if cs.exists() and patch_file(cs, replacements):
         touched.append(cs)
     for u in (ROOT / "users").glob("*"):
         if u.is_file():
@@ -36,8 +67,9 @@ def main():
             except UnicodeDecodeError:
                 continue
             if "<!DOCTYPE html>" in t or "<html" in t:
-                if patch_file(u):
+                if patch_file(u, replacements):
                     touched.append(u)
+
     app = ROOT / "js" / "app" / "app.js"
     if app.exists():
         t = app.read_text(encoding="utf-8")
@@ -49,6 +81,7 @@ def main():
             )
             app.write_text(t, encoding="utf-8", newline="\n")
             touched.append(app)
+
     for p in touched:
         print("patched:", p.relative_to(ROOT))
 

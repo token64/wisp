@@ -1,0 +1,7 @@
+{
+  "replacements": [
+    ["PASTE_OLD_GOOGLE_MAPS_BROWSER_KEY", "YOUR_GOOGLE_MAPS_API_KEY"],
+    ["UA-XXXXXXXX-X", "UA-REPLACE-WITH-YOUR-ID"],
+    ["https://wa.me/55XXXXXXXXXXX", "https://wa.me/REPLACE_E164_SIN_SIGNOS"]
+  ]
+}

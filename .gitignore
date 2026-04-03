@@ -13,5 +13,8 @@ npm-debug.log*
 # Volcados “Ver código fuente” del navegador (no versionar)
 view-source*.html
 
+# Pares antiguo→placeholder para tools/sanitize_assets.py (no subir claves reales)
+tools/sanitize_replacements.local.json
+
 # Si añades Node más adelante
 node_modules/

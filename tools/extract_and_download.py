@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
-"""Extract asset URLs from saved view-source HTML and download to local mapwisp/."""
+"""Extract asset URLs from saved view-source HTML and download into local mapwisp/."""
+from __future__ import annotations
+
+import argparse
 import html as html_lib
 import re
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = ROOT / (
-    "view-source_https___mia4.tomodat.com_tomodat_users_login_q="
-    "_tomodat_webroot_users_login&q=_tomodat_webroot_users_login&.html"
-)
 OUT_BASE = ROOT / "mapwisp"
-BASE = "https://mia4.tomodat.com"
 
 
 def normalize_url(u: str) -> str:
@@ -22,27 +21,31 @@ def normalize_url(u: str) -> str:
     return u
 
 
-def collect_urls(text: str) -> set[str]:
+def collect_urls(text: str, base: str) -> set[str]:
     text = html_lib.unescape(text)
-    found = set(re.findall(r"https://mia4\.tomodat\.com[^\s\"<>]+", text))
+    base_norm = base.rstrip("/")
+    esc = re.escape(base_norm)
+    found = set(re.findall(rf"{esc}[^\s\"<>]+", text))
     out = set()
     for u in found:
         u = normalize_url(u)
-        # Trim trailing junk
         for bad in ('"', "'", ")", "&gt;", "&lt;"):
             if bad in u:
                 u = u.split(bad)[0]
-        if u.startswith(BASE):
+        if u.startswith(base_norm):
             out.add(u)
     return out
 
 
-def url_to_local_path(url: str) -> Path:
-    from urllib.parse import urlparse
-
+def url_to_local_path(url: str, base: str) -> Path:
     path = urlparse(url).path.lstrip("/")
-    if path.startswith("tomodat/"):
-        path = path[8:]
+    base_path = urlparse(base).path.rstrip("/")
+    if base_path and path.startswith(base_path.lstrip("/")):
+        path = path[len(base_path.lstrip("/")) :].lstrip("/")
+    for prefix in ("tomodat/", "mapwisp/"):
+        if path.startswith(prefix):
+            path = path[len(prefix) :]
+            break
     return OUT_BASE.joinpath(*path.split("/")) if path else OUT_BASE
 
 
@@ -60,16 +63,34 @@ def download(url: str, dest: Path) -> tuple[str, str]:
         return ("err", f"{url}: {e}")
 
 
-def main():
-    if not SOURCE.exists():
-        print("Missing source HTML:", SOURCE)
+def main() -> None:
+    p = argparse.ArgumentParser(
+        description="Download assets linked from a browser 'view source' HTML dump."
+    )
+    p.add_argument(
+        "source_html",
+        type=Path,
+        help="Path to the saved view-source HTML file",
+    )
+    p.add_argument(
+        "--base",
+        required=True,
+        help="Origin site base URL (e.g. https://mia4.tomodat.com)",
+    )
+    args = p.parse_args()
+    source = args.source_html
+    base = args.base.rstrip("/")
+
+    if not source.is_file():
+        print("Missing or not a file:", source, file=sys.stderr)
         sys.exit(1)
-    text = SOURCE.read_text(encoding="utf-8", errors="replace")
-    urls = sorted(collect_urls(text))
-    print(f"Found {len(urls)} unique Tomodat URLs")
+
+    text = source.read_text(encoding="utf-8", errors="replace")
+    urls = sorted(collect_urls(text, base))
+    print(f"Found {len(urls)} unique URLs under {base}")
     ok, fail = 0, []
     for url in urls:
-        dest = url_to_local_path(url)
+        dest = url_to_local_path(url, base)
         if dest.exists() and dest.stat().st_size > 0:
             ok += 1
             continue
