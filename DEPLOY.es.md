@@ -119,7 +119,20 @@ Adapta el bloque `fastcgi` en `deploy/ubuntu-24/nginx-mapwisp.conf` cuando tenga
 
 ---
 
-## 5) Checklist
+## 5) Sanitizar strings antes de un push público
+
+Si en tu copia local aún aparecen claves de Maps, IDs de Analytics, enlaces de WhatsApp u otros textos que no deben subirse al repositorio:
+
+1. Copia `tools/sanitize_replacements.example.json` a **`tools/sanitize_replacements.local.json`** (este segundo archivo **no se versiona**; está en `.gitignore`).
+2. Edita el `.local.json`: en `replacements` pon pares `["texto_real_en_tus_archivos", "placeholder_seguro"]` (mismo formato que el ejemplo).
+3. Ejecuta desde la raíz del repo: `python tools/sanitize_assets.py`  
+   Sin archivo `.local`, el script solo avisa y no aplica esos reemplazos; puede seguir ajustando la línea de dominio en `app.js` si coincide el patrón documentado en el propio script.
+
+Para bajar assets desde un HTML “ver código fuente” guardado en disco, usa `python tools/extract_and_download.py RUTA_AL_HTML --base https://tu-origen` (ya no se asume ningún fichero concreto en el repo).
+
+---
+
+## 6) Checklist
 
 - [ ] `YOUR_GOOGLE_MAPS_API_KEY` en `mapwisp/users/login`, `logout`, `forgot_password`
 - [ ] `UA-REPLACE-WITH-YOUR-ID` o analytics según entorno
