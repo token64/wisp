@@ -137,13 +137,14 @@ SQL);
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pons_card ON pons (olt_card_id)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_power_pon ON pon_power_readings (pon_id)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_budget_lines_proj ON budget_lines (project_id)');
-    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_sites_building ON sites (building_id)');
 
+    // building_id debe existir antes de indexar (DB antiguas: sites sin esa columna).
     if (!fa_column_exists($pdo, 'sites', 'building_id')) {
         $pdo->exec(
             'ALTER TABLE sites ADD COLUMN building_id INTEGER REFERENCES buildings(id) ON DELETE SET NULL'
         );
     }
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_sites_building ON sites (building_id)');
 
     if (!fa_column_exists($pdo, 'mufas', 'site_id')) {
         $pdo->exec('ALTER TABLE mufas ADD COLUMN site_id INTEGER REFERENCES sites(id) ON DELETE SET NULL');
