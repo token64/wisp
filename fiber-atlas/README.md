@@ -25,8 +25,9 @@ Herramienta web ligera para **señalizar en mapa** tus **cables de fibra**, **mu
 
 ### Pestaña **Site / OLT / PON**
 
-Orden recomendado: **Site** → **OLT** → **Tarjeta** (slot) → **PON** (número de puerto).  
-En cada **PON** registras **lecturas de potencia (dBm)** por etapa (OLT, tras splitter, en mufa…).
+Orden recomendado: **Edificio** (ubicación física) → **Site** (cabecera / POP lógico) → **OLT** → **Tarjeta** (slot) → **PON**.  
+Los sites que ya tenías sin edificio aparecen en «Sites sin edificio» hasta que los asignes en el formulario del site.  
+En cada **PON** puedes registrar **lecturas de potencia (dBm)** por etapa (OLT, tras splitter, en mufa…).
 
 ### Pestaña **Presupuesto**
 

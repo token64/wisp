@@ -26,13 +26,27 @@ function fa_run_migrations(PDO $pdo): void
     $pdo->exec('PRAGMA foreign_keys = ON');
 
     $pdo->exec(<<<'SQL'
-CREATE TABLE IF NOT EXISTS sites (
+CREATE TABLE IF NOT EXISTS buildings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL DEFAULT '',
+  address TEXT NOT NULL DEFAULT '',
   lat REAL,
   lng REAL,
   notes TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+SQL);
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS sites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  building_id INTEGER,
+  name TEXT NOT NULL DEFAULT '',
+  lat REAL,
+  lng REAL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (building_id) REFERENCES buildings(id) ON DELETE SET NULL
 );
 SQL);
 
@@ -123,6 +137,13 @@ SQL);
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pons_card ON pons (olt_card_id)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_power_pon ON pon_power_readings (pon_id)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_budget_lines_proj ON budget_lines (project_id)');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_sites_building ON sites (building_id)');
+
+    if (!fa_column_exists($pdo, 'sites', 'building_id')) {
+        $pdo->exec(
+            'ALTER TABLE sites ADD COLUMN building_id INTEGER REFERENCES buildings(id) ON DELETE SET NULL'
+        );
+    }
 
     if (!fa_column_exists($pdo, 'mufas', 'site_id')) {
         $pdo->exec('ALTER TABLE mufas ADD COLUMN site_id INTEGER REFERENCES sites(id) ON DELETE SET NULL');

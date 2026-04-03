@@ -159,6 +159,15 @@ body {
   align-items: center;
 }
 
+.nt-building-head {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.nt-building {
+  margin-bottom: 1rem;
+}
+
 .nt-olt {
   margin: 0.4rem 0 0 0.5rem;
   padding-left: 0.5rem;

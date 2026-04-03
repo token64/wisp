@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/migrate.php';
 
 const ALLOWED = [
-    'mufas', 'terminals', 'cables', 'sites', 'olts', 'olt_cards', 'pons',
+    'mufas', 'terminals', 'cables', 'buildings', 'sites', 'olts', 'olt_cards', 'pons',
     'pon_power_readings', 'price_catalog', 'budget_projects', 'budget_lines', 'hierarchy',
 ];
 
@@ -92,29 +92,50 @@ function getFilter(string $key): ?int
     return $v > 0 ? $v : null;
 }
 
-/** GET hierarchy: Site → OLT → tarjeta → PON */
-if ($resource === 'hierarchy' && $method === 'GET') {
-    $sites = $pdo->query('SELECT * FROM sites ORDER BY name COLLATE NOCASE')->fetchAll();
-    $out = [];
-    foreach ($sites as $s) {
-        $st = $pdo->prepare('SELECT * FROM olts WHERE site_id = ? ORDER BY id');
-        $st->execute([(int) $s['id']]);
-        $olts = $st->fetchAll();
-        foreach ($olts as &$o) {
-            $stc = $pdo->prepare('SELECT * FROM olt_cards WHERE olt_id = ? ORDER BY sort_order, id');
-            $stc->execute([(int) $o['id']]);
-            $cards = $stc->fetchAll();
-            foreach ($cards as &$c) {
-                $stp = $pdo->prepare('SELECT * FROM pons WHERE olt_card_id = ? ORDER BY pon_number, id');
-                $stp->execute([(int) $c['id']]);
-                $c['pons'] = $stp->fetchAll();
-            }
-            $o['olt_cards'] = $cards;
+/** Rellena olts → tarjetas → PON bajo un site (referencia por array). */
+function fa_attach_olts_under_site(PDO $pdo, array &$site): void
+{
+    $st = $pdo->prepare('SELECT * FROM olts WHERE site_id = ? ORDER BY id');
+    $st->execute([(int) $site['id']]);
+    $olts = $st->fetchAll();
+    foreach ($olts as &$o) {
+        $stc = $pdo->prepare('SELECT * FROM olt_cards WHERE olt_id = ? ORDER BY sort_order, id');
+        $stc->execute([(int) $o['id']]);
+        $cards = $stc->fetchAll();
+        foreach ($cards as &$c) {
+            $stp = $pdo->prepare('SELECT * FROM pons WHERE olt_card_id = ? ORDER BY pon_number, id');
+            $stp->execute([(int) $c['id']]);
+            $c['pons'] = $stp->fetchAll();
         }
-        $s['olts'] = $olts;
-        $out[] = $s;
+        $o['olt_cards'] = $cards;
     }
-    jsonOut(['ok' => true, 'data' => $out]);
+    $site['olts'] = $olts;
+}
+
+/**
+ * GET hierarchy: Edificio → Site → OLT → tarjeta → PON.
+ * También devuelve sites sin edificio (migración / datos sueltos).
+ */
+if ($resource === 'hierarchy' && $method === 'GET') {
+    $buildings = $pdo->query('SELECT * FROM buildings ORDER BY name COLLATE NOCASE')->fetchAll();
+    foreach ($buildings as &$b) {
+        $sts = $pdo->prepare('SELECT * FROM sites WHERE building_id = ? ORDER BY name COLLATE NOCASE');
+        $sts->execute([(int) $b['id']]);
+        $sites = $sts->fetchAll();
+        foreach ($sites as &$s) {
+            fa_attach_olts_under_site($pdo, $s);
+        }
+        $b['sites'] = $sites;
+    }
+    unset($b, $s);
+    $orphans = $pdo->query(
+        'SELECT * FROM sites WHERE building_id IS NULL ORDER BY name COLLATE NOCASE'
+    )->fetchAll();
+    foreach ($orphans as &$s) {
+        fa_attach_olts_under_site($pdo, $s);
+    }
+    unset($s);
+    jsonOut(['ok' => true, 'data' => ['buildings' => $buildings, 'orphan_sites' => $orphans]]);
 }
 
 if ($method === 'GET') {
@@ -165,6 +186,13 @@ if ($method === 'GET') {
             $params[] = $fid;
         }
     }
+    if ($resource === 'sites') {
+        $fid = getFilter('building_id');
+        if ($fid !== null) {
+            $w[] = 'building_id = ?';
+            $params[] = $fid;
+        }
+    }
 
     $sql = "SELECT * FROM {$resource}";
     if ($w) {
@@ -181,12 +209,27 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
-    if ($resource === 'sites') {
-        $st = $pdo->prepare('INSERT INTO sites (name, lat, lng, notes) VALUES (?,?,?,?)');
+    if ($resource === 'buildings') {
+        $st = $pdo->prepare(
+            'INSERT INTO buildings (name, address, lat, lng, notes) VALUES (?,?,?,?,?)'
+        );
         $st->execute([
             (string) ($input['name'] ?? ''),
-            isset($input['lat']) ? (float) $input['lat'] : null,
-            isset($input['lng']) ? (float) $input['lng'] : null,
+            (string) ($input['address'] ?? ''),
+            isset($input['lat']) && $input['lat'] !== '' ? (float) $input['lat'] : null,
+            isset($input['lng']) && $input['lng'] !== '' ? (float) $input['lng'] : null,
+            (string) ($input['notes'] ?? ''),
+        ]);
+        jsonOut(['ok' => true, 'id' => (int) $pdo->lastInsertId()]);
+    }
+    if ($resource === 'sites') {
+        $bid = isset($input['building_id']) && $input['building_id'] !== '' ? (int) $input['building_id'] : null;
+        $st = $pdo->prepare('INSERT INTO sites (building_id, name, lat, lng, notes) VALUES (?,?,?,?,?)');
+        $st->execute([
+            $bid,
+            (string) ($input['name'] ?? ''),
+            isset($input['lat']) && $input['lat'] !== '' ? (float) $input['lat'] : null,
+            isset($input['lng']) && $input['lng'] !== '' ? (float) $input['lng'] : null,
             (string) ($input['notes'] ?? ''),
         ]);
         jsonOut(['ok' => true, 'id' => (int) $pdo->lastInsertId()]);
@@ -349,12 +392,32 @@ if ($method === 'PUT') {
         jsonOut(['ok' => false, 'error' => 'Falta id en el cuerpo JSON'], 400);
     }
 
-    if ($resource === 'sites') {
-        $st = $pdo->prepare('UPDATE sites SET name=?, lat=?, lng=?, notes=? WHERE id=?');
+    if ($resource === 'buildings') {
+        $st = $pdo->prepare('UPDATE buildings SET name=?, address=?, lat=?, lng=?, notes=? WHERE id=?');
         $st->execute([
             (string) ($input['name'] ?? ''),
-            isset($input['lat']) ? (float) $input['lat'] : null,
-            isset($input['lng']) ? (float) $input['lng'] : null,
+            (string) ($input['address'] ?? ''),
+            isset($input['lat']) && $input['lat'] !== '' ? (float) $input['lat'] : null,
+            isset($input['lng']) && $input['lng'] !== '' ? (float) $input['lng'] : null,
+            (string) ($input['notes'] ?? ''),
+            $pid,
+        ]);
+        jsonOut(['ok' => true, 'updated' => $st->rowCount()]);
+    }
+    if ($resource === 'sites') {
+        $stCur = $pdo->prepare('SELECT building_id FROM sites WHERE id = ?');
+        $stCur->execute([$pid]);
+        $exSite = $stCur->fetch(PDO::FETCH_ASSOC) ?: [];
+        $bid = array_key_exists('building_id', $input)
+            ? ($input['building_id'] === null || $input['building_id'] === '' ? null : (int) $input['building_id'])
+            : (isset($exSite['building_id']) && $exSite['building_id'] !== null && $exSite['building_id'] !== ''
+                ? (int) $exSite['building_id'] : null);
+        $st = $pdo->prepare('UPDATE sites SET building_id=?, name=?, lat=?, lng=?, notes=? WHERE id=?');
+        $st->execute([
+            $bid,
+            (string) ($input['name'] ?? ''),
+            isset($input['lat']) && $input['lat'] !== '' ? (float) $input['lat'] : null,
+            isset($input['lng']) && $input['lng'] !== '' ? (float) $input['lng'] : null,
             (string) ($input['notes'] ?? ''),
             $pid,
         ]);
@@ -552,7 +615,7 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     $deletable = [
-        'mufas', 'terminals', 'cables', 'sites', 'olts', 'olt_cards', 'pons',
+        'mufas', 'terminals', 'cables', 'buildings', 'sites', 'olts', 'olt_cards', 'pons',
         'pon_power_readings', 'price_catalog', 'budget_projects', 'budget_lines',
     ];
     if (!in_array($resource, $deletable, true)) {

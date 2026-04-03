@@ -53,12 +53,13 @@
         <div class="panel-col tree-col">
           <h2 class="panel-title">Inventario de red</h2>
           <p class="sub panel-hint">
-            1) Crea un <strong>site</strong> (cabecera). 2) Añade <strong>OLT</strong>. 3)
-            <strong>Tarjetas</strong> (slot). 4) <strong>PON</strong> con número. Luego registra
-            <strong>potencias</strong> por tramo / splitter / mufa.
+            1) <strong>Edificio</strong> (sala / POP físico). 2) <strong>Site</strong> (cabecera lógica).
+            3) <strong>OLT</strong> → <strong>Tarjeta</strong> → <strong>PON</strong>. Registra
+            <strong>potencias</strong> por tramo / splitter / mufa. «Site suelto» solo para migración.
           </p>
           <div class="toolbar-row">
-            <button type="button" id="btn-add-site" class="btn-sm">＋ Site</button>
+            <button type="button" id="btn-add-building" class="btn-sm">＋ Edificio</button>
+            <button type="button" id="btn-add-orphan-site" class="btn-sm">＋ Site suelto</button>
             <button type="button" id="btn-refresh-tree" class="btn-sm">Actualizar</button>
           </div>
           <div id="network-tree" class="network-tree"></div>

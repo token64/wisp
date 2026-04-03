@@ -34,7 +34,7 @@
     pendingPoint: null,
   };
 
-  let hierarchyCache = [];
+  let hierarchyCache = { buildings: [], orphan_sites: [] };
   let netSelection = null;
   let powerListCache = [];
   let fiberModal = { cableId: null, map: {}, editingIndex: null };
@@ -181,7 +181,11 @@
   async function loadHierarchy() {
     try {
       const res = await api("GET", "hierarchy");
-      hierarchyCache = res.data || [];
+      const d = res.data || {};
+      hierarchyCache = {
+        buildings: d.buildings || [],
+        orphan_sites: d.orphan_sites || [],
+      };
       renderNetworkTree();
       fillSiteAndPonSelects();
       if (netSelection) renderNetDetail();
@@ -192,15 +196,27 @@
     }
   }
 
+  function forEachSite(fn) {
+    (hierarchyCache.buildings || []).forEach((b) => {
+      (b.sites || []).forEach((s) => fn(s, b));
+    });
+    (hierarchyCache.orphan_sites || []).forEach((s) => fn(s, null));
+  }
+
   function flattenPons() {
     const list = [];
-    hierarchyCache.forEach((site) => {
+    forEachSite((site, building) => {
+      const pref = building
+        ? `${building.name} / ${site.name}`
+        : `(sin edif.) / ${site.name}`;
       (site.olts || []).forEach((olt) => {
         (olt.olt_cards || []).forEach((card) => {
           (card.pons || []).forEach((pon) => {
             list.push({
               id: pon.id,
-              label: `${site.name} / ${olt.name} / ${card.label} / PON ${pon.pon_number}${pon.label ? " " + pon.label : ""}`,
+              label: `${pref} / ${olt.name} / ${card.label} / PON ${pon.pon_number}${
+                pon.label ? " " + pon.label : ""
+              }`,
             });
           });
         });
@@ -215,9 +231,20 @@
     if (siteSel) {
       const v = siteSel.value;
       siteSel.innerHTML = '<option value="">— Ninguno —</option>';
-      hierarchyCache.forEach((s) => {
-        siteSel.innerHTML += `<option value="${s.id}">${escapeHtml(s.name || "Site")}</option>`;
+      (hierarchyCache.buildings || []).forEach((b) => {
+        siteSel.innerHTML += `<optgroup label="${escapeHtml(b.name || "Edificio")}">`;
+        (b.sites || []).forEach((s) => {
+          siteSel.innerHTML += `<option value="${s.id}">${escapeHtml(s.name || "Site")}</option>`;
+        });
+        siteSel.innerHTML += `</optgroup>`;
       });
+      if ((hierarchyCache.orphan_sites || []).length) {
+        siteSel.innerHTML += `<optgroup label="Sin edificio">`;
+        hierarchyCache.orphan_sites.forEach((s) => {
+          siteSel.innerHTML += `<option value="${s.id}">${escapeHtml(s.name || "Site")}</option>`;
+        });
+        siteSel.innerHTML += `</optgroup>`;
+      }
       if (v) siteSel.value = v;
     }
     if (ponSel) {
@@ -244,47 +271,88 @@
     if (v) sel.value = v;
   }
 
-  function renderNetworkTree() {
-    const el = document.getElementById("network-tree");
-    if (!hierarchyCache.length) {
-      el.innerHTML = '<p class="sub">No hay sites. Pulsa «＋ Site».</p>';
-      return;
-    }
-    let html = "";
-    hierarchyCache.forEach((site) => {
-      html += `<div class="nt-site" data-id="${site.id}">
-        <div class="nt-head" data-sel="site" data-id="${site.id}">
+  function renderSiteSubtree(site) {
+    let html = `<div class="nt-site" data-id="${site.id}">
+        <div class="nt-head" data-sel="site" data-id="${site.id}" data-building-id="${
+          site.building_id != null ? site.building_id : ""
+        }">
           <span>${escapeHtml(site.name || "Site")}</span>
           <button type="button" class="btn-sm" data-add-olt="${site.id}">＋ OLT</button>
         </div>`;
-      (site.olts || []).forEach((olt) => {
-        html += `<div class="nt-olt" data-id="${olt.id}">
+    (site.olts || []).forEach((olt) => {
+      html += `<div class="nt-olt" data-id="${olt.id}">
           <div class="nt-head" data-sel="olt" data-id="${olt.id}" data-site-id="${site.id}">
             <span>OLT: ${escapeHtml(olt.name || "#" + olt.id)}</span>
             <button type="button" class="btn-sm" data-add-card="${olt.id}">＋ Tarjeta</button>
           </div>`;
-        (olt.olt_cards || []).forEach((card) => {
-          html += `<div class="nt-card" data-id="${card.id}">
+      (olt.olt_cards || []).forEach((card) => {
+        html += `<div class="nt-card" data-id="${card.id}">
             <div class="nt-head" data-sel="card" data-id="${card.id}" data-olt-id="${olt.id}">
               <span>${escapeHtml(card.label || "Tarjeta")}</span>
               <button type="button" class="btn-sm" data-add-pon="${card.id}">＋ PON</button>
             </div>`;
-          (card.pons || []).forEach((pon) => {
-            html += `<div class="nt-pon" data-sel="pon" data-id="${pon.id}" data-card-id="${card.id}">
+        (card.pons || []).forEach((pon) => {
+          html += `<div class="nt-pon" data-sel="pon" data-id="${pon.id}" data-card-id="${card.id}">
               <span>PON ${pon.pon_number} ${escapeHtml(pon.label || "")}</span>
               <span class="nt-mini">#${pon.id}</span>
             </div>`;
-          });
-          html += `</div>`;
         });
         html += `</div>`;
       });
       html += `</div>`;
     });
+    html += `</div>`;
+    return html;
+  }
+
+  function renderNetworkTree() {
+    const el = document.getElementById("network-tree");
+    const blds = hierarchyCache.buildings || [];
+    const orphans = hierarchyCache.orphan_sites || [];
+    if (!blds.length && !orphans.length) {
+      el.innerHTML =
+        '<p class="sub">Orden: <strong>Edificio</strong> → <strong>Site</strong> (cabecera) → OLT → tarjeta → PON. Pulsa «＋ Edificio».</p>';
+      return;
+    }
+    let html = "";
+    blds.forEach((b) => {
+      html += `<div class="nt-building" data-id="${b.id}">
+        <div class="nt-head nt-building-head" data-sel="building" data-id="${b.id}">
+          <span>Edificio: ${escapeHtml(b.name || "#" + b.id)}</span>
+          <button type="button" class="btn-sm" data-add-site="${b.id}">＋ Site</button>
+        </div>`;
+      (b.sites || []).forEach((site) => {
+        html += renderSiteSubtree(site);
+      });
+      html += `</div>`;
+    });
+    if (orphans.length) {
+      html += `<div class="nt-orphan"><p class="sub" style="margin:0.6rem 0 0.35rem">Sites sin edificio</p>`;
+      orphans.forEach((site) => {
+        html += renderSiteSubtree(site);
+      });
+      html += `</div>`;
+    }
     el.innerHTML = html;
   }
 
   document.getElementById("network-tree").addEventListener("click", async (ev) => {
+    const addSiteUnder = ev.target.closest("[data-add-site]");
+    if (addSiteUnder) {
+      const name = prompt("Nombre del site (cabecera / POP lógico) en este edificio?");
+      if (!name) return;
+      try {
+        await api("POST", "sites", {
+          building_id: Number(addSiteUnder.dataset.addSite),
+          name,
+          notes: "",
+        });
+        await loadHierarchy();
+      } catch (e) {
+        alert(e.message);
+      }
+      return;
+    }
     const addOlt = ev.target.closest("[data-add-olt]");
     const addCard = ev.target.closest("[data-add-card]");
     const addPon = ev.target.closest("[data-add-pon]");
@@ -349,11 +417,21 @@
     }
   });
 
-  document.getElementById("btn-add-site").addEventListener("click", async () => {
-    const name = prompt("Nombre del site (cabecera)?");
+  document.getElementById("btn-add-building").addEventListener("click", async () => {
+    const name = prompt("Nombre del edificio / sala / POP físico?");
     if (!name) return;
     try {
-      await api("POST", "sites", { name, notes: "" });
+      await api("POST", "buildings", { name, address: "", notes: "" });
+      await loadHierarchy();
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+  document.getElementById("btn-add-orphan-site").addEventListener("click", async () => {
+    const name = prompt("Nombre del site sin edificio (solo migración o temporal)?");
+    if (!name) return;
+    try {
+      await api("POST", "sites", { name, notes: "", building_id: null });
       await loadHierarchy();
     } catch (e) {
       alert(e.message);
@@ -362,34 +440,55 @@
   document.getElementById("btn-refresh-tree").addEventListener("click", () => loadHierarchy());
 
   function findSite(id) {
-    return hierarchyCache.find((s) => s.id === id);
+    let found = null;
+    forEachSite((s) => {
+      if (s.id === id) found = s;
+    });
+    return found;
   }
+
+  function findBuilding(id) {
+    return (hierarchyCache.buildings || []).find((b) => b.id === id);
+  }
+
   function findOlt(id) {
-    for (const s of hierarchyCache) {
-      const o = (s.olts || []).find((x) => x.id === id);
-      if (o) return { site: s, olt: o };
-    }
-    return null;
+    let r = null;
+    forEachSite((site, building) => {
+      const o = (site.olts || []).find((x) => x.id === id);
+      if (o) r = { building, site, olt: o };
+    });
+    return r;
   }
   function findCard(id) {
-    for (const s of hierarchyCache) {
-      for (const o of s.olts || []) {
+    let r = null;
+    forEachSite((site, building) => {
+      for (const o of site.olts || []) {
         const c = (o.olt_cards || []).find((x) => x.id === id);
-        if (c) return { site: s, olt: o, card: c };
+        if (c) r = { building, site, olt: o, card: c };
       }
-    }
-    return null;
+    });
+    return r;
   }
   function findPon(id) {
-    for (const s of hierarchyCache) {
-      for (const o of s.olts || []) {
+    let r = null;
+    forEachSite((site, building) => {
+      for (const o of site.olts || []) {
         for (const c of o.olt_cards || []) {
           const p = (c.pons || []).find((x) => x.id === id);
-          if (p) return { site: s, olt: o, card: c, pon: p };
+          if (p) r = { building, site, olt: o, card: c, pon: p };
         }
       }
-    }
-    return null;
+    });
+    return r;
+  }
+
+  function buildingOptionsHtml(selectedId) {
+    let h = '<option value="">— Sin edificio —</option>';
+    (hierarchyCache.buildings || []).forEach((b) => {
+      const sel = Number(selectedId) === b.id ? " selected" : "";
+      h += `<option value="${b.id}"${sel}>${escapeHtml(b.name || "#" + b.id)}</option>`;
+    });
+    return h;
   }
 
   function renderNetDetail() {
@@ -401,12 +500,57 @@
       return;
     }
     const { type, id } = netSelection;
+    if (type === "building") {
+      const b = findBuilding(id);
+      if (!b) return;
+      title.textContent = "Edificio";
+      box.innerHTML = `
+        <div class="form-grid">
+          <label>Nombre<input type="text" id="nd-bname" value="${escapeHtml(b.name)}" /></label>
+          <label>Dirección / ref.<input type="text" id="nd-baddr" value="${escapeHtml(b.address || "")}" /></label>
+          <label>Lat (opc.)<input type="text" id="nd-blat" value="${b.lat != null ? b.lat : ""}" /></label>
+          <label>Lng (opc.)<input type="text" id="nd-blng" value="${b.lng != null ? b.lng : ""}" /></label>
+          <label>Notas<textarea id="nd-bnotes">${escapeHtml(b.notes || "")}</textarea></label>
+          <div class="toolbar-row">
+            <button type="button" class="btn-sm btn-primary" id="nd-save-b">Guardar</button>
+            <button type="button" class="btn-sm" id="nd-del-b" style="border-color:#b91c1c;color:#fca5a5">Borrar edificio</button>
+          </div>
+        </div>
+        <p class="sub" style="margin-top:0.75rem">Al borrar, los sites pasan a «sin edificio» (no se pierden).</p>`;
+      document.getElementById("nd-save-b").onclick = async () => {
+        try {
+          await api("PUT", "buildings", {
+            id,
+            name: document.getElementById("nd-bname").value,
+            address: document.getElementById("nd-baddr").value,
+            lat: document.getElementById("nd-blat").value || null,
+            lng: document.getElementById("nd-blng").value || null,
+            notes: document.getElementById("nd-bnotes").value,
+          });
+          await loadHierarchy();
+        } catch (e) {
+          alert(e.message);
+        }
+      };
+      document.getElementById("nd-del-b").onclick = async () => {
+        if (!confirm("¿Borrar edificio? Los sites quedarán sin edificio.")) return;
+        try {
+          await api("DELETE", "buildings", null, id);
+          netSelection = null;
+          await loadHierarchy();
+          renderNetDetail();
+        } catch (e) {
+          alert(e.message);
+        }
+      };
+    }
     if (type === "site") {
       const s = findSite(id);
       if (!s) return;
-      title.textContent = "Site";
+      title.textContent = "Site (cabecera)";
       box.innerHTML = `
         <div class="form-grid">
+          <label>Edificio físico<select id="nd-building-id">${buildingOptionsHtml(s.building_id)}</select></label>
           <label>Nombre<input type="text" id="nd-name" value="${escapeHtml(s.name)}" /></label>
           <label>Lat (opc.)<input type="text" id="nd-lat" value="${s.lat != null ? s.lat : ""}" /></label>
           <label>Lng (opc.)<input type="text" id="nd-lng" value="${s.lng != null ? s.lng : ""}" /></label>
@@ -418,8 +562,10 @@
         </div>`;
       document.getElementById("nd-save-site").onclick = async () => {
         try {
+          const bid = document.getElementById("nd-building-id").value;
           await api("PUT", "sites", {
             id,
+            building_id: bid === "" ? null : parseInt(bid, 10),
             name: document.getElementById("nd-name").value,
             lat: document.getElementById("nd-lat").value || null,
             lng: document.getElementById("nd-lng").value || null,
@@ -544,8 +690,17 @@
         <td>${r.mufa_id ? "mufa #" + r.mufa_id : "—"}</td>
         <td><button type="button" class="btn-sm" data-del-pow="${r.id}">✕</button></td></tr>`;
     });
+    const crumb = [
+      x.building ? x.building.name : null,
+      x.site.name,
+      x.olt.name,
+      x.card.label,
+    ]
+      .filter(Boolean)
+      .map((t) => escapeHtml(t))
+      .join(" → ");
     box.innerHTML = `
-      <p class="sub">${escapeHtml(x.site.name)} → ${escapeHtml(x.olt.name)} → ${escapeHtml(x.card.label)}</p>
+      <p class="sub">${crumb}</p>
       <div class="form-grid">
         <label>Nº PON<input type="number" id="nd-ponn" value="${x.pon.pon_number}" /></label>
         <label>Etiqueta<input type="text" id="nd-plab" value="${escapeHtml(x.pon.label || "")}" /></label>
