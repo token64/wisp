@@ -1,0 +1,273 @@
+:root {
+  --bg: #0f1419;
+  --panel: #1a2332;
+  --border: #2d3a4d;
+  --text: #e7edf5;
+  --muted: #8b9cb3;
+  --accent: #3b82f6;
+  --mufa: #f59e0b;
+  --terminal: #22c55e;
+  --cable: #2563eb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  display: flex;
+  height: 100%;
+}
+
+.sidebar {
+  width: 300px;
+  min-width: 280px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar header {
+  padding: 1rem 1rem 0.5rem;
+}
+
+.sidebar h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.sidebar .sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.tools {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tools button {
+  flex: 1 1 45%;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.tools button:hover {
+  border-color: var(--muted);
+}
+
+.tools button.active {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.tools button.danger-outline {
+  border-color: #b91c1c;
+  color: #fca5a5;
+}
+
+.list-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 0.5rem 0.75rem 1rem;
+}
+
+.list-wrap h2 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.list-wrap h2:first-child {
+  margin-top: 0;
+}
+
+.item {
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.35rem;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.item:hover {
+  border-color: var(--muted);
+}
+
+.item.selected {
+  border-color: var(--accent);
+}
+
+.item .title {
+  font-weight: 500;
+}
+
+.item .meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.item .actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.item .actions button {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.item .actions button:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.item .actions button.del:hover {
+  color: #fca5a5;
+  border-color: #b91c1c;
+}
+
+#map {
+  flex: 1;
+  min-height: 200px;
+}
+
+.status-bar {
+  padding: 0.35rem 1rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+.status-bar strong {
+  color: var(--accent);
+}
+
+/* Modal */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-backdrop.open {
+  display: flex;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 1rem 1.1rem;
+}
+
+.modal h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.modal label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0.2rem;
+}
+
+.modal input,
+.modal textarea {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.modal textarea {
+  min-height: 4rem;
+  resize: vertical;
+}
+
+.modal .row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.modal .actions-row {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.modal .actions-row button {
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.modal .actions-row .btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.modal .actions-row .btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+}
