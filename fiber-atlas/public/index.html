@@ -37,6 +37,23 @@
           <span class="nav-ic" aria-hidden="true">¤</span>
           <span class="nav-txt">Presupuesto</span>
         </button>
+        <button type="button" class="nav-item" data-tab="settings" role="tab" aria-selected="false">
+          <span class="nav-ic" aria-hidden="true">⚙</span>
+          <span class="nav-txt">Ajustes</span>
+        </button>
+        <div class="nav-project-block no-print" aria-labelledby="nav-project-block-title">
+          <p id="nav-project-block-title" class="nav-project-label">Proyectos (mapa)</p>
+          <div class="nav-project-actions-row">
+            <button type="button" class="nav-tree-new btn-sm" id="nav-btn-new-project" title="Crear proyecto con nombre y primera sección">
+              ＋ Nuevo proyecto
+            </button>
+            <button type="button" class="nav-tree-import btn-sm" id="nav-btn-import-project" title="Restaurar desde archivo JSON">
+              ↑ Importar
+            </button>
+          </div>
+          <input type="file" id="nav-import-file" accept="application/json,.json" hidden />
+          <div id="nav-project-tree" class="nav-project-tree" role="tree" aria-label="Proyectos y secciones"></div>
+        </div>
         <div class="nav-spacer"></div>
         <p class="nav-foot">Herramienta local · no es Tomodat</p>
       </aside>
@@ -46,17 +63,15 @@
         <aside class="sidebar">
           <header>
             <h1>Fiber Atlas</h1>
-            <p class="sub">
-              <strong>Cabecera aquí:</strong> edificio / sala → <strong>site</strong> (POP lógico) →
-              <strong>OLT</strong>. En campo, el <strong>site activo</strong> enlaza nuevas
-              <strong>mufas</strong> a esa cabecera; cables y cortes siguen abajo.
-            </p>
+            <p class="sub">Edif.→site→OLT. Site activo = cabecera mufas. Cable abajo.</p>
+            <div id="map-work-context-banner" class="map-work-context-banner" hidden>
+              <span class="map-work-context-label">Trabajo:</span>
+              <span id="map-work-context-text" class="map-work-context-text"></span>
+            </div>
           </header>
           <section class="map-hierarchy" aria-labelledby="map-hierarchy-title">
-            <h2 id="map-hierarchy-title" class="map-hierarchy-title">Red de acceso (resumen)</h2>
-            <p class="sub map-hierarchy-micro">
-              Misma jerarquía que en inventario: OLT en central / POP; mufas y manga en OSP.
-            </p>
+            <h2 id="map-hierarchy-title" class="map-hierarchy-title">Red acceso</h2>
+            <p class="sub map-hierarchy-micro">Igual que inventario. S# = orden site.</p>
             <div class="map-hierarchy-toolbar">
               <button type="button" id="map-btn-add-building" class="btn-sm">＋ Edificio</button>
               <button type="button" id="map-btn-add-orphan-site" class="btn-sm">＋ Site suelto</button>
@@ -68,13 +83,17 @@
             <div id="map-active-site-banner" class="map-active-site-banner" hidden></div>
             <div id="map-hierarchy-body" class="map-hierarchy-body"></div>
             <p class="sub map-hierarchy-link">
-              <button type="button" class="btn-link" id="map-open-inventory">
-                Abrir inventario completo (PON, potencias)…
-              </button>
+              <button type="button" class="btn-link" id="map-open-inventory">Inventario (PON, potencias)…</button>
             </p>
           </section>
           <div class="tools">
             <button type="button" id="mode-none" class="active" data-mode="">Navegar</button>
+            <button type="button" id="mode-org-building" data-mode="org_building" title="Clic en mapa: crea edificio con referencia GPS">
+              ＋ Edificio
+            </button>
+            <button type="button" id="mode-org-site" data-mode="org_site" title="Tras elegir edificio en el árbol, clic en mapa: crea site">
+              ＋ Site
+            </button>
             <button type="button" id="mode-mufa" data-mode="mufa">＋ Mufa</button>
             <button type="button" id="mode-terminal" data-mode="terminal">＋ Terminal</button>
             <button type="button" id="mode-cable" data-mode="cable">＋ Cable</button>
@@ -83,6 +102,9 @@
             </button>
             <button type="button" id="cable-cancel" disabled>Cancelar trazado</button>
           </div>
+          <p class="sub map-sidebar-hint no-print">
+            Fondo del mapa, claves API e impresión están en <strong>Ajustes</strong> (barra izquierda).
+          </p>
           <div class="list-wrap" id="lists"></div>
           <div class="status-bar" id="status">Listo.</div>
         </aside>
@@ -95,10 +117,19 @@
         <div class="panel-col tree-col">
           <h2 class="panel-title">Inventario de red</h2>
           <p class="sub panel-hint">
-            1) <strong>Edificio</strong> (sala / POP físico). 2) <strong>Site</strong> (cabecera lógica).
-            3) <strong>OLT</strong> → <strong>Tarjeta</strong> → <strong>PON</strong>. Registra
-            <strong>potencias</strong> por tramo / splitter / mufa. «Site suelto» solo para migración.
-            <strong>Borrar:</strong> botón <strong>✕</strong> en cada fila o panel <strong>Detalle</strong> (clic en el nombre).
+            <strong>Orden lógico (de arriba abajo):</strong> Edificio → <strong>Site</strong> (cabecera) →
+            <strong>OLT</strong> → <strong>Tarjeta</strong> → <strong>PON</strong>. Ahí se configura la
+            jerarquía de red; el detalle derecho cambia según lo que selecciones.
+          </p>
+          <p class="sub panel-hint panel-hint-tight">
+            <strong>Mapa (mufas / mangas / terminales):</strong> al crear o editar, enlaza el mismo
+            <strong>Site</strong> y el <strong>origen PON</strong> que definiste aquí, para que quede todo
+            coherente. <strong>ODF</strong> u otros repartos no son tipo aparte aún: úsalos en nombre/notas
+            del site o del equipo.
+          </p>
+          <p class="sub panel-hint panel-hint-tight">
+            Potencias en detalle de cada PON. Site suelto = migración. Borrar: ✕ en árbol o desde el panel
+            de detalle.
           </p>
           <div class="toolbar-row">
             <button type="button" id="btn-add-building" class="btn-sm">＋ Edificio</button>
@@ -118,23 +149,69 @@
 
     <div id="panel-budget" class="tab-panel" data-panel="budget" hidden>
       <div class="budget-wrap">
+        <div class="budget-print-bar no-print">
+          <button type="button" id="budget-btn-print" class="btn-sm btn-primary">
+            Imprimir (papel A4)
+          </button>
+          <span class="sub budget-print-hint"
+            >Vista previa del cuadro de impresión del sistema; use papel normal en impresora estándar (no térmica).</span>
+        </div>
+        <p class="print-only budget-print-head">Fiber Atlas — Presupuesto</p>
         <section class="budget-section">
           <h2 class="panel-title">Catálogo de precios</h2>
           <p class="sub">
-            Fibra (m), caja NAP, mufa, manga, preparación de palo, etc. Úsalo al armar un proyecto.
+            Material (fibra, NAP, mufa, manga, prep. palo), <strong>M.O. prep. palo</strong> por ud y
+            <strong>mano de obra</strong> solo tirado por km / tirado con prep. por km. Indica en «ud» precio y unidad
+            coherentes (p. ej. $/km).
+            <br />
+            <strong>Aviso legal:</strong> En este catálogo se asume que <strong>todos los precios ya tienen los impuestos
+            aplicables incluidos</strong>; si algún importe fuera sin impuestos, debe indicarse expresamente.
           </p>
           <form id="form-catalog" class="inline-form">
             <input type="text" id="cat-name" placeholder="Nombre" required />
             <select id="cat-category">
-              <option value="fibra">Fibra / cable</option>
-              <option value="caja_nap">Caja / NAP</option>
+              <optgroup label="Fibra / cable">
+                <option value="fibra_6">6 hilos</option>
+                <option value="fibra_8">8 hilos</option>
+                <option value="fibra_12">12 hilos</option>
+                <option value="fibra_24">24 hilos</option>
+                <option value="fibra_48">48 hilos</option>
+                <option value="fibra_72">72 hilos</option>
+                <option value="fibra_96">96 hilos</option>
+                <option value="fibra_144">144 hilos</option>
+                <option value="fibra_192">192 hilos</option>
+                <option value="fibra_288">288 hilos</option>
+              </optgroup>
+              <optgroup label="Caja / NAP">
+                <option value="caja_nap_8">8 puertos</option>
+                <option value="caja_nap_16">16 puertos</option>
+              </optgroup>
               <option value="mufa">Mufa</option>
               <option value="manga">Manga</option>
-              <option value="prep_palo">Prep. palo / obra</option>
+              <optgroup label="Prep. palo">
+                <option value="prep_gancho">Gancho</option>
+                <option value="prep_j">J</option>
+                <option value="prep_gris_8">Gris para fibras 8</option>
+                <option value="prep_gris_12">Gris para fibras 12</option>
+                <option value="prep_gris_24">Gris para fibras 24</option>
+                <option value="prep_gris_48">Gris para fibras 48</option>
+              </optgroup>
+              <optgroup label="M.O. prep. palo">
+                <option value="mo_prep_gancho">Gancho (ud)</option>
+                <option value="mo_prep_j">J (ud)</option>
+                <option value="mo_prep_gris_8">Gris para fibras 8 (ud)</option>
+                <option value="mo_prep_gris_12">Gris para fibras 12 (ud)</option>
+                <option value="mo_prep_gris_24">Gris para fibras 24 (ud)</option>
+                <option value="mo_prep_gris_48">Gris para fibras 48 (ud)</option>
+              </optgroup>
+              <optgroup label="Mano de obra">
+                <option value="mo_tirado_km">Tirado fibra ($/km)</option>
+                <option value="mo_tirado_prep_km">Tirado + prep. palo ($/km)</option>
+              </optgroup>
               <option value="otro">Otro</option>
             </select>
             <input type="number" id="cat-price" placeholder="Precio" min="0" step="0.01" required />
-            <input type="text" id="cat-unit" placeholder="ud / m / km" value="ud" />
+            <input type="text" id="cat-unit" placeholder="ud / km" value="ud" />
             <button type="submit" class="btn-sm btn-primary">Añadir</button>
           </form>
           <div id="catalog-list" class="data-table-wrap"></div>
@@ -150,32 +227,235 @@
               <label class="lbl-sm">Proyecto activo</label>
               <select id="budget-project-select"></select>
             </div>
-            <div id="project-total" class="project-total">Total: 0,00 €</div>
+            <div id="project-total" class="project-total">Total: 0,00 $</div>
           </div>
           <form id="form-line" class="inline-form">
             <input type="text" id="line-desc" placeholder="Concepto" required />
             <select id="line-cat">
-              <option value="fibra">Fibra</option>
-              <option value="caja_nap">Caja NAP</option>
+              <optgroup label="Fibra">
+                <option value="fibra_6">6 hilos</option>
+                <option value="fibra_8">8 hilos</option>
+                <option value="fibra_12">12 hilos</option>
+                <option value="fibra_24">24 hilos</option>
+                <option value="fibra_48">48 hilos</option>
+                <option value="fibra_72">72 hilos</option>
+                <option value="fibra_96">96 hilos</option>
+                <option value="fibra_144">144 hilos</option>
+                <option value="fibra_192">192 hilos</option>
+                <option value="fibra_288">288 hilos</option>
+              </optgroup>
+              <optgroup label="Caja NAP">
+                <option value="caja_nap_8">8 puertos</option>
+                <option value="caja_nap_16">16 puertos</option>
+              </optgroup>
               <option value="mufa">Mufa</option>
               <option value="manga">Manga</option>
-              <option value="prep_palo">Prep. palo</option>
+              <optgroup label="Prep. palo">
+                <option value="prep_gancho">Gancho</option>
+                <option value="prep_j">J</option>
+                <option value="prep_gris_8">Gris para fibras 8</option>
+                <option value="prep_gris_12">Gris para fibras 12</option>
+                <option value="prep_gris_24">Gris para fibras 24</option>
+                <option value="prep_gris_48">Gris para fibras 48</option>
+              </optgroup>
+              <optgroup label="M.O. prep. palo">
+                <option value="mo_prep_gancho">Gancho</option>
+                <option value="mo_prep_j">J</option>
+                <option value="mo_prep_gris_8">Gris para fibras 8</option>
+                <option value="mo_prep_gris_12">Gris para fibras 12</option>
+                <option value="mo_prep_gris_24">Gris para fibras 24</option>
+                <option value="mo_prep_gris_48">Gris para fibras 48</option>
+              </optgroup>
+              <optgroup label="Mano de obra">
+                <option value="mo_tirado_km">Tirado fibra ($/km)</option>
+                <option value="mo_tirado_prep_km">Tirado + prep. palo ($/km)</option>
+              </optgroup>
               <option value="otro">Otro</option>
             </select>
-            <input type="number" id="line-qty" placeholder="Cant." min="0" step="0.01" value="1" />
+            <input type="number" id="line-qty" min="0" step="0.01" value="1" />
             <input type="number" id="line-price" placeholder="P. unit." min="0" step="0.01" required />
             <button type="submit" class="btn-sm btn-primary">Añadir línea</button>
+            <span id="line-draft-subtotal" class="line-draft-subtotal" aria-live="polite"></span>
           </form>
           <p class="sub">
-            Puedes rellenar líneas a mano o usar precios del catálogo como referencia (copia mental al
-            rellenar).
+            <strong>Fibra</strong> y <strong>mano de obra</strong> (tirado o tirado + prep., $/km): cantidad en
+            <strong>km</strong>. Resto en unidades. <strong>M.O. prep. palo</strong> está en su propio desplegable.
           </p>
           <div id="lines-list" class="data-table-wrap"></div>
         </section>
       </div>
     </div>
 
+    <div id="panel-settings" class="tab-panel" data-panel="settings" hidden>
+      <div class="settings-wrap">
+        <h2 class="panel-title">Ajustes</h2>
+        <p class="sub settings-intro">
+          Mapa, claves e impresión: todo lo que no necesita estar encima del trabajo diario en la pestaña
+          <strong>Mapa</strong>. Para delimitar un rectángulo con 2 clics, abra antes la pestaña Mapa.
+        </p>
+        <section class="map-scope-settings no-print" aria-labelledby="map-scope-settings-title">
+          <h3 id="map-scope-settings-title" class="map-zone-title">Obra por proyecto / sección</h3>
+          <p class="sub map-print-zone-desc">
+            En el mapa solo se listan <strong>mufas, cables, terminales y edificios (GPS)</strong> de la
+            <strong>sección activa</strong> en la barra izquierda. Lo nuevo se guarda en esa sección.
+          </p>
+          <label class="lbl-sm map-include-unscoped-label">
+            <input type="checkbox" id="map-include-unscoped" />
+            Mostrar también elementos <strong>sin sección</strong> (creados antes de este filtro)
+          </label>
+        </section>
+        <section class="map-basemap-zone no-print" aria-labelledby="map-basemap-title">
+          <h3 id="map-basemap-title" class="map-zone-title">Fondo del mapa</h3>
+          <p class="sub map-print-zone-desc">
+            La app de <strong>Google</strong> usa datos y dibujo propios (edificios, POI, grosor de vías).
+            Aquí, <strong>MapTiler HD</strong> y OSM mejoran el trazo pero <strong>no son la misma cartografía</strong>.
+            Para igualar Google: <strong>Google Maps (API oficial)</strong> + clave (Maps JavaScript API).
+          </p>
+          <label class="lbl-sm" for="map-basemap">Tipo de mapa</label>
+          <select id="map-basemap" class="map-print-select" autocomplete="off">
+            <option value="voyager" selected>Calles — Voyager (OSM, sin clave)</option>
+            <option value="google-roadmap">Calles — Google Maps (API oficial)</option>
+            <option value="google-hybrid">Google — Híbrido (satélite + calles)</option>
+            <option value="google-satellite">Google — Satélite</option>
+            <option value="hot">Calles — HOT (humanitario, contrastado)</option>
+            <option value="esri-street">Calles — Esri World</option>
+            <option value="esri-gray">Plano gris Esri (mínimo, cables encima)</option>
+            <option value="osm">Calles — OpenStreetMap clásico</option>
+            <option value="carto-light">Plano claro (Carto)</option>
+            <option value="carto-dark">Oscuro Carto (día/nocturno)</option>
+            <option value="satellite">Satélite (imagen)</option>
+            <option value="topo">Relieve / topográfico</option>
+          </select>
+          <details class="map-maptiler-details map-google-details">
+            <summary>Google Maps — clave API oficial</summary>
+            <p class="sub map-print-zone-desc map-maptiler-hint">
+              Consola:
+              <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud</a>
+              → credenciales → clave de API; habilite
+              <strong>Maps JavaScript API</strong> (cuenta de facturación requerida; hay crédito mensual).
+            </p>
+            <input
+              type="password"
+              id="map-google-key"
+              class="map-print-select map-maptiler-input"
+              placeholder="Pegar clave Maps JavaScript API…"
+              autocomplete="off"
+            />
+            <div class="map-maptiler-actions">
+              <button type="button" id="map-google-save" class="btn-sm btn-primary">Guardar y usar Google</button>
+              <button type="button" id="map-google-clear" class="btn-sm">Quitar clave</button>
+            </div>
+          </details>
+          <details class="map-maptiler-details">
+            <summary>MapTiler (opcional, más “pro”)</summary>
+            <p class="sub map-print-zone-desc map-maptiler-hint">
+              Registro gratis en
+              <a href="https://cloud.maptiler.com/" target="_blank" rel="noopener">cloud.maptiler.com</a>
+              → copie la clave y actívela aquí.
+            </p>
+            <input
+              type="password"
+              id="map-maptiler-key"
+              class="map-print-select map-maptiler-input"
+              placeholder="Pegar clave API…"
+              autocomplete="off"
+            />
+            <div class="map-maptiler-actions">
+              <button type="button" id="map-maptiler-save" class="btn-sm btn-primary">Guardar y usar</button>
+              <button type="button" id="map-maptiler-clear" class="btn-sm">Quitar clave</button>
+            </div>
+          </details>
+        </section>
+        <section class="map-print-zone no-print" aria-labelledby="map-print-title">
+          <h3 id="map-print-title" class="map-zone-title">Impresión del mapa por zonas</h3>
+          <p class="sub map-print-zone-desc">
+            Elija qué área entra en la hoja. Papel normal; en el cuadro de impresión use
+            <strong>horizontal (apaisado)</strong> si la zona es ancha. Espere a que carguen las teselas.
+            <strong>Rectángulo (2 clics):</strong> cambie a la pestaña Mapa, pulse «Definir zona» y haga los dos clics en el mapa.
+          </p>
+          <label class="lbl-sm" for="map-print-zone-mode">Zona de impresión</label>
+          <select id="map-print-zone-mode" class="map-print-select">
+            <option value="view">Vista actual del mapa</option>
+            <option value="full">Toda la red (ajustar al máximo y imprimir)</option>
+            <option value="rect">Rectángulo (2 clics en el mapa)</option>
+          </select>
+          <div class="map-print-actions">
+            <button type="button" id="map-print-rect-start" class="btn-sm">Definir zona (2 clics)</button>
+            <button type="button" id="map-print-rect-clear" class="btn-sm">Quitar zona</button>
+            <button type="button" id="map-btn-print-map" class="btn-sm btn-primary">Imprimir mapa (A4)</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
       </main>
+    </div>
+
+    <!-- Modal: proyecto / sección (obligatorio al iniciar; nuevo proyecto o nueva sección) -->
+    <div class="modal-backdrop" id="modal-project-backdrop" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-project-wizard-title">
+        <h3 id="modal-project-wizard-title">Proyecto de mapa</h3>
+        <form id="form-project-wizard">
+          <input type="hidden" id="proj-wizard-add-section-for" value="" />
+          <div id="proj-wizard-project-fields">
+            <label for="proj-wizard-name">Nombre del proyecto *</label>
+            <input type="text" id="proj-wizard-name" autocomplete="off" />
+          </div>
+          <label for="proj-wizard-section">Nombre de la sección *</label>
+          <input type="text" id="proj-wizard-section" autocomplete="off" required />
+          <p class="sub" id="proj-wizard-hint"></p>
+          <div class="actions-row">
+            <button type="button" class="btn-secondary" id="proj-wizard-cancel">Cancelar</button>
+            <button type="submit" class="btn-primary" id="proj-wizard-submit">Crear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Eliminar proyecto: obligatorio escribir BORRAR PROYECTO -->
+    <div class="modal-backdrop" id="modal-del-project-backdrop" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-del-project-title">
+        <h3 id="modal-del-project-title">Eliminar proyecto</h3>
+        <p class="sub modal-del-project-warn" id="modal-del-project-warn"></p>
+        <p class="sub" style="margin: 0.5rem 0 0.35rem">
+          Para evitar borrados por error, escriba <strong>exactamente</strong> (mayúsculas):
+        </p>
+        <label class="lbl-sm" for="del-project-phrase">Confirmación</label>
+        <input type="text" id="del-project-phrase" class="map-print-select" autocomplete="off" placeholder="BORRAR PROYECTO" />
+        <label class="lbl-sm del-project-check-wrap" style="margin-top: 0.65rem">
+          <input type="checkbox" id="del-project-purge-server" checked />
+          Borrar también en el <strong>servidor</strong> mufas, cables, terminales y edificios (GPS) de este proyecto
+        </label>
+        <p class="sub del-project-soft-hint" id="del-project-soft-hint" hidden>
+          Sin marcar la casilla solo se quita el proyecto del menú; los datos siguen en la base con el mismo ámbito (puede volver a confundir al filtrar).
+        </p>
+        <div class="actions-row" style="margin-top: 1rem">
+          <button type="button" class="btn-secondary" id="del-project-cancel">Cancelar</button>
+          <button type="button" class="btn-sm danger-project-btn" id="del-project-confirm" disabled>
+            Eliminar definitivamente
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Importar backup JSON -->
+    <div class="modal-backdrop" id="modal-import-project-backdrop" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-import-project-title">
+        <h3 id="modal-import-project-title">Importar proyecto (backup)</h3>
+        <p class="sub" id="import-project-summary"></p>
+        <p class="sub" style="margin: 0.65rem 0 0.35rem">
+          Se creará un <strong>proyecto nuevo</strong> «nombre (importado)» con secciones y elementos nuevos en la base (IDs nuevos). Enlaces PON/site del backup se copian tal cual: si no existen en esta base, guarde sin esos campos o corrija después.
+        </p>
+        <p class="sub" style="margin: 0.35rem 0 0.5rem">
+          Escriba <strong>exactamente</strong>: <code>IMPORTAR PROYECTO</code>
+        </p>
+        <label class="lbl-sm" for="import-project-phrase">Confirmación</label>
+        <input type="text" id="import-project-phrase" class="map-print-select" autocomplete="off" placeholder="IMPORTAR PROYECTO" />
+        <div class="actions-row" style="margin-top: 1rem">
+          <button type="button" class="btn-secondary" id="import-project-cancel">Cancelar</button>
+          <button type="button" class="btn-sm btn-primary" id="import-project-confirm" disabled>Importar</button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal entidades mapa (fuera del shell: no los recorta overflow) -->
@@ -199,23 +479,118 @@
             </div>
           </div>
 
+          <div id="f-building-extra" style="display: none">
+            <label for="f-building-address">Dirección / referencia</label>
+            <input type="text" id="f-building-address" autocomplete="off" placeholder="Calle, número, nota de ubicación…" />
+            <div id="f-building-sites-hint"></div>
+            <p class="sub" style="margin: 0.5rem 0 0">
+              Los <strong>sites</strong> y equipos (<strong>OLT</strong>, tarjetas, PON) se crean en el árbol
+              <strong>Inventario</strong> / <strong>Red acceso</strong>, debajo de este edificio.
+            </p>
+          </div>
+
           <div id="f-mufa-extra">
             <label for="f-site-id">Site (cabecera)</label>
             <select id="f-site-id">
               <option value="">— Ninguno —</option>
             </select>
-            <label for="f-linked-pon-id">PON hacia esta mufa (opcional)</label>
-            <select id="f-linked-pon-id">
-              <option value="">— Ninguno —</option>
-            </select>
+            <label>Origen PON (hacia esta mufa)</label>
+            <select id="f-mufa-src-site"><option value="">— Site —</option></select>
+            <select id="f-mufa-src-olt" disabled><option value="">— OLT —</option></select>
+            <select id="f-mufa-src-card" disabled><option value="">— Tarj. —</option></select>
+            <select id="f-mufa-src-pon" disabled><option value="">— PON —</option></select>
+            <p class="sub" style="margin: 0.25rem 0 0.5rem">
+              Tarjeta: <strong>P1–P16</strong> aunque el PON no exista en inventario. S# = orden creación. Misma
+              <strong>cabecera</strong> = no repetir puerto entre mufas/mangas.
+            </p>
+            <div class="mufa-splitters-wrap">
+              <p class="sub" style="margin: 0.35rem 0 0.25rem">Splitters (cada uno: ratio, PON y <strong>pelo entrante</strong> TIA)</p>
+              <ul id="f-mufa-splitters-list" class="mufa-splitters-list"></ul>
+              <button type="button" class="btn-sm" id="f-mufa-splitter-add">+ Agregar splitter</button>
+              <p class="sub" style="margin: 0.35rem 0 0">
+                Pelos ya elegidos en otros splitters no se ofrecen como entrantes. En <strong>Mapa de fibras</strong> de la
+                manga puede rellenar pelos según estos datos.
+              </p>
+              <label style="display: flex; align-items: flex-start; gap: 0.4rem; margin-top: 0.45rem; cursor: pointer">
+                <input type="checkbox" id="f-mufa-splitter-use-color" style="margin-top: 0.2rem" />
+                <span>En el mapa, color del marcador = TIA del <strong>pelo entrante</strong> del primer splitter (si no, del PON)</span>
+              </label>
+            </div>
             <label for="f-model">Modelo / tipo</label>
             <input type="text" id="f-model" />
             <label for="f-splice">Empalmes en esta mufa</label>
             <input type="number" id="f-splice" min="0" step="1" />
+            <div class="mufa-fiber-io-wrap">
+              <p class="sub" style="margin: 0.65rem 0 0.35rem">
+                <strong>Fibras en esta mufa</strong> — documentación del trazado (referencia; complementa PON, splitters y
+                <strong>Mapa de fibras</strong> de cada manga).
+              </p>
+              <h4 class="mufa-io-h">Entradas</h4>
+              <p class="sub" style="margin: 0 0 0.25rem">
+                Qué cable o tramo llega, desde dónde y qué pelos TIA usa.
+              </p>
+              <ul id="f-mufa-io-entradas" class="mufa-io-list"></ul>
+              <button type="button" class="btn-sm" id="f-mufa-io-add-entrada">+ Añadir entrada</button>
+              <h4 class="mufa-io-h">Salidas</h4>
+              <p class="sub" style="margin: 0 0.25rem">
+                Hacia calles / terminales, otra mufa del barrio, troncal; ratio splitter (p. ej. 1×16) o PON completo.
+              </p>
+              <ul id="f-mufa-io-salidas" class="mufa-io-list"></ul>
+              <button type="button" class="btn-sm" id="f-mufa-io-add-salida">+ Añadir salida</button>
+            </div>
           </div>
 
           <div id="f-terminal-extra">
-            <label for="f-ports">Nº de puertos</label>
+            <label>Drop: mufa o manga</label>
+            <div class="terminal-marker-row" role="radiogroup" aria-label="Origen del drop">
+              <label class="terminal-marker-opt"
+                ><input type="radio" name="f-term-drop-src" value="mufa" checked /> Mufa</label
+              >
+              <label class="terminal-marker-opt"
+                ><input type="radio" name="f-term-drop-src" value="cable" /> Manga</label
+              >
+            </div>
+            <label for="f-term-drop-mufa">Mufa</label>
+            <select id="f-term-drop-mufa"><option value="">—</option></select>
+            <label for="f-term-drop-cable">Cable / manga</label>
+            <select id="f-term-drop-cable"><option value="">—</option></select>
+            <label for="f-term-splitter">Splitter / salida</label>
+            <input
+              type="text"
+              id="f-term-splitter"
+              autocomplete="off"
+              placeholder="p.ej. 1:8, puerto 3"
+            />
+            <label>Color mapa</label>
+            <div class="terminal-marker-row" role="radiogroup" aria-label="Color terminal mapa">
+              <label class="terminal-marker-opt"
+                ><input type="radio" name="f-terminal-marker" value="green" checked /> Verde</label
+              >
+              <label class="terminal-marker-opt"
+                ><input type="radio" name="f-terminal-marker" value="yellow" /> Amarillo</label
+              >
+              <label class="terminal-marker-opt"
+                ><input type="radio" name="f-terminal-marker" value="red" /> Rojo</label
+              >
+            </div>
+            <p class="sub" style="margin: 0.2rem 0 0.45rem">Sin potencia / flojo / otro. Solo estos 3 en mapa.</p>
+            <label for="f-terminal-drop-fiber">Pelo TIA</label>
+            <select id="f-terminal-drop-fiber">
+              <option value="">—</option>
+              <option value="1">1 — Azul</option>
+              <option value="2">2 — Naranja</option>
+              <option value="3">3 — Verde</option>
+              <option value="4">4 — Marrón</option>
+              <option value="5">5 — Pizarra</option>
+              <option value="6">6 — Blanco</option>
+              <option value="7">7 — Rojo</option>
+              <option value="8">8 — Negro</option>
+              <option value="9">9 — Amarillo</option>
+              <option value="10">10 — Violeta</option>
+              <option value="11">11 — Rosa</option>
+              <option value="12">12 — Aqua</option>
+            </select>
+            <label for="f-ports">Puertos</label>
             <input type="number" id="f-ports" min="1" step="1" />
           </div>
 
@@ -229,6 +604,10 @@
               <button type="button" data-fibers="24">24</button>
               <button type="button" data-fibers="48">48</button>
               <button type="button" data-fibers="72">72</button>
+              <button type="button" data-fibers="96">96</button>
+              <button type="button" data-fibers="144">144</button>
+              <button type="button" data-fibers="192">192</button>
+              <button type="button" data-fibers="288">288</button>
             </div>
             <div class="row2">
               <div>
@@ -240,10 +619,60 @@
                 <input type="color" id="f-color" />
               </div>
             </div>
+            <label for="f-fiber-spec">Tipo / norma de fibra</label>
+            <select id="f-fiber-spec">
+              <option value="">— Sin especificar —</option>
+              <option value="SM G.652.D">Monomodo G.652.D (STD SM)</option>
+              <option value="SM G.652.B">Monomodo G.652.B</option>
+              <option value="SM G.657.A1">Monomodo G.657.A1 (bending)</option>
+              <option value="SM G.657.A2">Monomodo G.657.A2</option>
+              <option value="SM G.657.B3">Monomodo G.657.B3</option>
+              <option value="SM G.654">Monomodo G.654 (largo alcance)</option>
+              <option value="MM OM1">Multimodo OM1 (62,5 µm)</option>
+              <option value="MM OM2">Multimodo OM2 (50 µm)</option>
+              <option value="MM OM3">Multimodo OM3</option>
+              <option value="MM OM4">Multimodo OM4</option>
+              <option value="MM OM5">Multimodo OM5</option>
+              <option value="__custom__">Otra (escribir)</option>
+            </select>
+            <div id="f-fiber-spec-custom-wrap" class="fiber-spec-custom-wrap" hidden>
+              <label for="f-fiber-spec-custom">Norma / tipo manual</label>
+              <input
+                type="text"
+                id="f-fiber-spec-custom"
+                autocomplete="off"
+                placeholder="p.ej. G.657.A2 SWR, Drop 2×1 mm…"
+              />
+            </div>
             <label for="f-manga">Nombre / ref. manga (tramo)</label>
             <input type="text" id="f-manga" placeholder="p.ej. Manga calle Mayor" />
+            <label for="f-cable-scope-site">Site (cabecera del proyecto)</label>
+            <select id="f-cable-scope-site">
+              <option value="">— Ninguno —</option>
+            </select>
+            <p class="sub" style="margin: 0 0 0.5rem">
+              Misma cabecera que en mufas: el PON no se duplica entre mangas/mufas de este site (no entre sites distintos).
+            </p>
+            <p class="sub cable-trace-hint" id="f-cable-trace-hint" hidden></p>
             <label for="f-splice-cable">Empalmes en esta manga</label>
             <input type="number" id="f-splice-cable" min="0" step="1" value="0" />
+            <label>Origen PON (esta manga)</label>
+            <select id="f-cable-src-site"><option value="">— Site —</option></select>
+            <select id="f-cable-src-olt" disabled><option value="">— OLT —</option></select>
+            <select id="f-cable-src-card" disabled><option value="">— Tarj. —</option></select>
+            <select id="f-cable-src-pon" disabled><option value="">— PON —</option></select>
+            <p class="sub" style="margin: 0.25rem 0 0">
+              Misma lógica que en mufa: <strong>P1–P16</strong> por tarjeta.
+            </p>
+            <div id="f-cable-anchor-detect" class="cable-anchor-detect" hidden>
+              <p class="sub cable-anchor-intro">
+                Cerca del <strong>inicio</strong> y del <strong>fin</strong> del trazado buscamos mufas y terminales (~40 m).
+                Use «Añadir a notas» y luego, tras guardar, <strong>Mapa de fibras</strong> para enlazar cada pelo a PON / mufa /
+                terminal o anotar splitter (1×16, puerto…).
+              </p>
+              <div id="f-cable-anchor-start" class="cable-anchor-col"></div>
+              <div id="f-cable-anchor-end" class="cable-anchor-col"></div>
+            </div>
           </div>
 
           <label for="f-notes">Notas</label>
@@ -260,13 +689,60 @@
       </div>
     </div>
 
+    <!-- Sub-modal: un splitter en la mufa -->
+    <div class="modal-backdrop" id="mufa-splitter-dlg-backdrop" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mufa-splitter-dlg-title">
+        <h3 id="mufa-splitter-dlg-title">Splitter</h3>
+        <p class="sub" style="margin: 0 0 0.5rem">
+          Cada vez que guarda aquí se añade <strong>un</strong> splitter a la lista; el total es el número de filas.
+        </p>
+        <label for="f-mufa-spldlg-ratio">Tipo / ratio</label>
+        <select id="f-mufa-spldlg-ratio">
+          <option value="">—</option>
+          <option value="1:2">1:2</option>
+          <option value="1:4">1:4</option>
+          <option value="1:8">1:8</option>
+          <option value="1:16">1:16</option>
+          <option value="1:32">1:32</option>
+          <option value="1:64">1:64</option>
+          <option value="otro">Otro (detalle en notas de la mufa)</option>
+        </select>
+        <div class="mufa-spldlg-pon-block">
+          <p class="sub mufa-spldlg-pon-heading">PON del splitter (site → OLT → tarjeta → PON)</p>
+          <select id="f-mufa-spldlg-site"><option value="">— Site —</option></select>
+          <select id="f-mufa-spldlg-olt" disabled><option value="">— OLT —</option></select>
+          <select id="f-mufa-spldlg-card" disabled><option value="">— Tarj. —</option></select>
+          <select id="f-mufa-spldlg-pon" disabled><option value="">— PON —</option></select>
+          <label for="f-mufa-spldlg-input-fiber">Color del pelo entrante (TIA, fibra hacia el splitter)</label>
+          <select id="f-mufa-spldlg-input-fiber"><option value="">—</option></select>
+        </div>
+        <div class="actions-row" style="margin-top: 0.75rem">
+          <button type="button" class="btn-secondary" id="mufa-splitter-dlg-cancel">Cancelar</button>
+          <button type="button" class="btn-primary" id="mufa-splitter-dlg-save">Guardar splitter</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal mapa de fibras (colores) -->
     <div class="modal-backdrop" id="fiber-modal-backdrop" aria-hidden="true">
       <div class="modal modal-fiber" role="dialog" aria-modal="true">
         <h3 id="fiber-modal-title">Pelos del cable</h3>
         <p class="sub" id="fiber-modal-hint">
-          Toca un color para enlazar ese pelo a un PON o anotar hacia qué mufa/salida va.
+          Toca un número para enlazar ese pelo a un PON, mufa o terminal (o anotar splitter / manga en la nota).
         </p>
+        <p class="sub" id="fiber-mufa-split-hint" hidden></p>
+        <button type="button" class="btn-sm" id="fiber-apply-mufa-splits" hidden style="margin: 0.35rem 0 0">
+          Rellenar pelos libres desde splitters (mufa fin de trazo)
+        </button>
+        <label class="fiber-seq-toggle lbl-sm">
+          <input type="checkbox" id="fiber-seq-mode" />
+          Modo secuencial (pelo 1 → 2 → 3… guardando al avanzar)
+        </label>
+        <div id="fiber-seq-bar" class="fiber-seq-bar" hidden>
+          <button type="button" class="btn-sm" id="fiber-seq-prev">← Anterior pelo</button>
+          <span id="fiber-seq-pos" class="fiber-seq-pos">Pelo 1 / 12</span>
+          <button type="button" class="btn-sm" id="fiber-seq-next">Siguiente pelo →</button>
+        </div>
         <div id="fiber-grid" class="fiber-grid"></div>
         <div id="fiber-editor" class="fiber-editor" hidden>
           <label>Pelo <strong id="fiber-ed-index"></strong></label>
@@ -293,6 +769,19 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
+    <script>
+      /* MapTiler: clave de ejemplo (revise restricciones de origen en el panel MapTiler). */
+      window.FIBER_ATLAS_MAPTILER_KEY =
+        window.FIBER_ATLAS_MAPTILER_KEY || "4q6GRBdOfZUQf8t56GEG";
+      /*
+        Google Maps (API oficial): por defecto vacío. Opciones:
+        1) Dejar "" y en la app: desplegar «Google Maps — clave API oficial», pegar clave y «Guardar y usar Google»
+           (se guarda en localStorage de ESTE navegador; borrar datos del sitio o otro PC = hay que volver a guardar).
+        2) Fijar clave para todos: window.FIBER_ATLAS_GOOGLE_MAPS_KEY || "AIza…";
+      */
+      window.FIBER_ATLAS_GOOGLE_MAPS_KEY = window.FIBER_ATLAS_GOOGLE_MAPS_KEY || "";
+    </script>
+    <script src="js/config.local.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>

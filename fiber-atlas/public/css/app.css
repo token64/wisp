@@ -111,6 +111,196 @@ body {
   color: rgba(147, 197, 253, 0.75);
 }
 
+.nav-project-block {
+  border-top: 1px solid var(--border);
+  padding: 0.65rem 0.75rem 0.5rem;
+  flex-shrink: 0;
+  max-height: min(42vh, 320px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 0;
+}
+
+.nav-project-label {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.nav-project-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.nav-project-actions-row .nav-tree-new {
+  flex: 1;
+  min-width: 0;
+  width: auto !important;
+}
+
+.nav-tree-import {
+  flex-shrink: 0;
+  font-size: 0.72rem !important;
+  padding: 0.35rem 0.45rem !important;
+}
+
+.nav-tree-new {
+  width: 100%;
+  font-size: 0.72rem !important;
+  padding: 0.35rem 0.45rem !important;
+}
+
+.nav-tree-project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0 0.15rem 0.4rem 1.35rem;
+}
+
+.nav-tree-action-dl {
+  font-size: 0.68rem !important;
+  padding: 0.25rem 0.4rem !important;
+}
+
+.nav-tree-action-del {
+  font-size: 0.68rem !important;
+  padding: 0.25rem 0.4rem !important;
+  border-color: #7f1d1d;
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.nav-tree-action-del:hover {
+  background: rgba(127, 29, 29, 0.35);
+  color: #fff;
+}
+
+.danger-project-btn {
+  background: #b91c1c !important;
+  color: #fff !important;
+  border: 1px solid #7f1d1d !important;
+}
+
+.danger-project-btn:hover:not(:disabled) {
+  background: #991b1b !important;
+}
+
+.danger-project-btn:disabled {
+  opacity: 0.45;
+}
+
+.nav-project-tree {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.nav-tree-project {
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+}
+
+.nav-tree-project-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.35rem 0.3rem 0.35rem 0.4rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 6px;
+}
+
+.nav-tree-project-head:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-tree-caret {
+  flex-shrink: 0;
+  width: 1rem;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.nav-tree-project-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-tree-add-section {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--accent);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nav-tree-add-section:hover {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+.nav-tree-sections {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0.35rem 0.35rem 1.5rem;
+  gap: 0.15rem;
+}
+
+.nav-tree-section {
+  display: block;
+  width: 100%;
+  padding: 0.32rem 0.45rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-tree-section:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-tree-section.active {
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.15);
+  font-weight: 600;
+}
+
 .nav-spacer {
   flex: 1;
   min-height: 0.5rem;
@@ -136,6 +326,63 @@ body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.settings-wrap {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.settings-intro {
+  margin: 0 0 1rem;
+}
+
+.map-scope-settings {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.map-include-unscoped-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.map-include-unscoped-label input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.map-sidebar-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+}
+
+.map-work-context-banner {
+  margin-top: 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.map-work-context-label {
+  color: var(--muted);
+  margin-right: 0.35rem;
+}
+
+.map-work-context-text {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .tab-panel[hidden] {
@@ -205,6 +452,12 @@ body {
 .panel-hint {
   margin: 0 0 0.75rem;
   font-size: 0.78rem;
+}
+
+.panel-hint-tight {
+  margin-top: -0.35rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.45;
 }
 
 .toolbar-row {
@@ -434,6 +687,18 @@ button.tree-del:hover {
   color: var(--accent);
 }
 
+.line-draft-subtotal {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.data-table tfoot td {
+  border-top: 2px solid var(--border);
+  font-weight: 600;
+  background: var(--bg-soft, rgba(255, 255, 255, 0.04));
+}
+
 /* Fibras TIA */
 .fiber-presets {
   display: flex;
@@ -454,6 +719,162 @@ button.tree-del:hover {
 
 .fiber-presets button:hover {
   border-color: var(--accent);
+}
+
+.cable-anchor-detect {
+  margin: 0.65rem 0 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.cable-anchor-intro {
+  margin: 0 0 0.5rem !important;
+  line-height: 1.4;
+}
+
+.cable-trace-hint {
+  margin: 0.35rem 0 0.65rem !important;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #86efac;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.cable-anchor-label {
+  margin: 0.35rem 0 0.2rem !important;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cable-anchor-list {
+  margin: 0 0 0.35rem 0.85rem;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.cable-anchor-list li {
+  margin-bottom: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cable-anchor-empty {
+  margin: 0.15rem 0 0.4rem !important;
+}
+
+.fiber-seq-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.35rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.fiber-seq-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+}
+
+.fiber-seq-pos {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.terminal-marker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.terminal-marker-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.terminal-marker-opt input {
+  accent-color: var(--accent);
+}
+
+/* P1–P16 en detalle tarjeta OLT */
+.pon-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.25rem;
+}
+
+.pon-slot-cell {
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 3.1rem;
+}
+
+.pon-slot-libre {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.pon-slot-ocupado {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.pon-slot-n {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.pon-slot-st {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.pon-slot-who {
+  display: block;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.nt-site-n {
+  display: inline-block;
+  min-width: 1.6rem;
+  padding: 0.08rem 0.28rem;
+  margin-right: 0.2rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  vertical-align: middle;
 }
 
 .fiber-grid {
@@ -495,6 +916,109 @@ button.tree-del:hover {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
+}
+
+.mufa-splitters-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.35rem 0;
+  max-height: 11rem;
+  overflow-y: auto;
+}
+
+.mufa-splitters-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.2rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
+.mufa-splitters-list .mufa-spl-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.mufa-spldlg-pon-block {
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--border);
+}
+
+.mufa-spldlg-pon-heading {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+}
+
+.mufa-fiber-io-wrap {
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+
+.mufa-io-h {
+  margin: 0.55rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.mufa-io-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.3rem 0 0.4rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.mufa-io-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.mufa-io-fields {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 440px) {
+  .mufa-io-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mufa-io-fields .mufa-io-span2 {
+    grid-column: 1 / -1;
+  }
+}
+
+.mufa-io-fields label {
+  display: block;
+  margin: 0;
+}
+
+.mufa-io-fields label > span {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.88;
+  margin-bottom: 0.12rem;
+}
+
+.mufa-io-fields .mufa-io-in {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mufa-io-row .mufa-io-rm {
+  flex-shrink: 0;
+  margin-top: 1.15rem;
 }
 
 .modal-wide {
@@ -568,6 +1092,107 @@ button.tree-del:hover {
 .tools button.danger-outline {
   border-color: #b91c1c;
   color: #fca5a5;
+}
+
+/* Fondo del mapa (sidebar) */
+.map-basemap-zone {
+  margin: 0 0 0.5rem;
+  padding: 0.65rem 0.75rem;
+  background: linear-gradient(145deg, rgba(59, 130, 246, 0.08), rgba(0, 0, 0, 0.14));
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 8px;
+}
+
+.map-basemap-zone .map-zone-title {
+  color: var(--text);
+}
+
+.map-maptiler-details {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+  font-size: 0.82rem;
+}
+
+.map-maptiler-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.map-maptiler-details summary:hover {
+  color: var(--text);
+}
+
+.map-maptiler-hint {
+  margin-top: 0.45rem !important;
+}
+
+.map-maptiler-hint a {
+  color: var(--accent);
+}
+
+.map-maptiler-input {
+  margin-top: 0.35rem;
+}
+
+.map-maptiler-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+/* Impresión mapa por zonas (sidebar) */
+.map-print-zone {
+  margin: 0 0 0.5rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.map-zone-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.map-print-zone-desc {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.map-print-select {
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 0.45rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.map-print-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.map-print-actions .btn-sm {
+  flex: 1 1 auto;
+  min-width: 5.5rem;
+}
+
+#map.map-print-picking {
+  cursor: crosshair;
 }
 
 /* Mapa: jerarquía cabecera en sidebar */
@@ -760,6 +1385,94 @@ button.tree-del:hover {
   min-height: 200px;
 }
 
+/* Marcador SVG edificio (Leaflet) */
+.fa-building-leaflet-icon {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+.fa-building-leaflet-icon img {
+  display: block;
+  width: 44px !important;
+  height: 44px !important;
+}
+
+/* Búsqueda ciudad / coordenadas (control superior izquierda, debajo del zoom) */
+.fa-map-search {
+  padding: 0 !important;
+  background: #fff !important;
+  display: flex;
+  align-items: stretch;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
+}
+
+.fa-map-search-form {
+  display: flex;
+  align-items: stretch;
+  margin: 0;
+  width: 100%;
+}
+
+.fa-map-search-input {
+  border: none;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.82rem;
+  min-width: 10.5rem;
+  max-width: 16rem;
+  width: min(16rem, 42vw);
+  outline: none;
+  color: #1a1a1a;
+}
+
+.fa-map-search-input::placeholder {
+  color: #6b7280;
+}
+
+.fa-map-search-btn {
+  border: none;
+  border-left: 1px solid #d1d5db;
+  background: #f3f4f6;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.fa-map-search-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Satélite ↔ Calles (control superior derecha, junto al zoom) */
+.fa-sat-toggle {
+  padding: 0 !important;
+  background: #fff !important;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.fa-sat-toggle-btn {
+  display: block;
+  border: none;
+  background: #fff;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1f2937;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.fa-sat-toggle-btn:hover {
+  background: #f3f4f6;
+}
+
+.fa-sat-toggle-btn[aria-pressed="true"] {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
 .status-bar {
   padding: 0.35rem 1rem;
   font-size: 0.75rem;
@@ -860,4 +1573,193 @@ button.tree-del:hover {
 
 .leaflet-control-attribution {
   font-size: 10px;
+}
+
+/* Barra impresión presupuesto (pantalla) */
+.budget-print-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.budget-print-hint {
+  margin: 0;
+  max-width: 42rem;
+}
+
+.print-only {
+  display: none;
+}
+
+/* Impresión: solo al usar «Imprimir (papel A4)» → clase print-presupuesto en body */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body.print-presupuesto {
+    background: #fff !important;
+  }
+
+  body.print-presupuesto .print-only {
+    display: block;
+    margin: 0 0 0.75rem;
+    font-size: 11pt;
+    font-weight: 600;
+    color: #000;
+  }
+
+  body.print-presupuesto .app-shell {
+    display: block;
+  }
+
+  body.print-presupuesto .nav-rail {
+    display: none !important;
+  }
+
+  body.print-presupuesto .main-stage {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    width: 100%;
+  }
+
+  body.print-presupuesto #panel-map,
+  body.print-presupuesto #panel-network {
+    display: none !important;
+  }
+
+  body.print-presupuesto #panel-budget {
+    display: block !important;
+  }
+
+  body.print-presupuesto #panel-budget[hidden] {
+    display: block !important;
+  }
+
+  body.print-presupuesto .modal-backdrop {
+    display: none !important;
+  }
+
+  body.print-presupuesto .no-print,
+  body.print-presupuesto .budget-wrap .inline-form,
+  body.print-presupuesto .budget-wrap .line-draft-subtotal {
+    display: none !important;
+  }
+
+  body.print-presupuesto .budget-wrap button {
+    display: none !important;
+  }
+
+  body.print-presupuesto .budget-section {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  body.print-presupuesto .panel-title,
+  body.print-presupuesto .sub {
+    color: #000;
+  }
+
+  body.print-presupuesto .panel-title {
+    font-size: 14pt;
+  }
+
+  body.print-presupuesto .project-total {
+    color: #000;
+    font-size: 12pt;
+  }
+
+  body.print-presupuesto .data-table {
+    font-size: 9.5pt;
+    width: 100%;
+  }
+
+  body.print-presupuesto .data-table th,
+  body.print-presupuesto .data-table td {
+    border: 1px solid #222;
+    background: #fff;
+    color: #000;
+    padding: 0.3rem 0.45rem;
+  }
+
+  body.print-presupuesto .data-table tfoot td {
+    background: #f5f5f5;
+    border-top: 2px solid #000;
+  }
+
+  body.print-presupuesto .lbl-sm {
+    color: #333;
+  }
+
+  body.print-presupuesto #budget-project-select {
+    border: 1px solid #333;
+    background: #fff;
+    color: #000;
+  }
+
+  /* Mapa: solo al usar «Imprimir mapa (A4)» en la pestaña Mapa */
+  body.print-mapa-zona .nav-rail {
+    display: none !important;
+  }
+
+  body.print-mapa-zona .main-stage {
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  body.print-mapa-zona #panel-network,
+  body.print-mapa-zona #panel-budget,
+  body.print-mapa-zona #panel-settings {
+    display: none !important;
+  }
+
+  body.print-mapa-zona #panel-map {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  body.print-mapa-zona #panel-map[hidden] {
+    display: flex !important;
+  }
+
+  body.print-mapa-zona .app {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  body.print-mapa-zona .sidebar,
+  body.print-mapa-zona .no-print {
+    display: none !important;
+  }
+
+  body.print-mapa-zona #map {
+    width: 100% !important;
+    height: 180mm !important;
+    min-height: 120mm !important;
+    page-break-inside: avoid;
+    border: 1px solid #ccc;
+  }
+
+  body.print-mapa-zona .modal-backdrop {
+    display: none !important;
+  }
+
+  body.print-mapa-zona .leaflet-control-container {
+    display: none !important;
+  }
+
+  body.print-mapa-zona {
+    background: #fff !important;
+  }
 }

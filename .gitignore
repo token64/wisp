@@ -18,3 +18,7 @@ tools/sanitize_replacements.local.json
 
 # Si añades Node más adelante
 node_modules/
+
+# Capturas / archivos sueltos en la raíz del repo (no son código)
+/Vx30-eqkdoY_480x360.jpg
+/descarga.png

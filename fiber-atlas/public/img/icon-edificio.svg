@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
+  <ellipse cx="28" cy="51" rx="16" ry="4" fill="rgba(0,0,0,0.14)"/>
+  <path fill="#f3f3f3" stroke="#1a1a1a" stroke-width="1.15" d="M10 36 L10 22 L28 10 L28 42 Z"/>
+  <path fill="#e4e4e4" stroke="#1a1a1a" stroke-width="1.15" d="M28 10 L46 22 L46 36 L28 42 Z"/>
+  <path fill="#e0b83d" stroke="#1a1a1a" stroke-width="1.15" d="M10 22 L28 10 L46 22 L28 34 Z"/>
+  <g fill="#9eb8d4" stroke="#333" stroke-width="0.55">
+    <rect x="13" y="24" width="4.5" height="4.5"/>
+    <rect x="19" y="24" width="4.5" height="4.5"/>
+    <rect x="13" y="30" width="4.5" height="4.5"/>
+    <rect x="19" y="30" width="4.5" height="4.5"/>
+    <rect x="13" y="36" width="4.5" height="4"/>
+    <rect x="19" y="36" width="4.5" height="4"/>
+  </g>
+  <rect x="12" y="38" width="11" height="5" fill="#2d2d2d" stroke="#1a1a1a" stroke-width="0.9"/>
+  <rect x="34" y="28" width="5.5" height="11" fill="#d4a62d" stroke="#1a1a1a" stroke-width="0.9"/>
+  <line x1="36.8" y1="33" x2="40" y2="33" stroke="#1a1a1a" stroke-width="0.7"/>
+  <ellipse cx="7" cy="50" rx="3.2" ry="5" fill="#c9a227" stroke="#1a1a1a" stroke-width="1"/>
+  <ellipse cx="49" cy="50" rx="3.2" ry="5" fill="#c9a227" stroke="#1a1a1a" stroke-width="1"/>
+</svg>

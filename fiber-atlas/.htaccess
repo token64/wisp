@@ -1,0 +1,5 @@
+# Permite que Apache entre en fiber-atlas/ hacia public/ y api/
+<IfModule mod_authz_core.c>
+  Require all granted
+</IfModule>
+Options +FollowSymLinks -Indexes

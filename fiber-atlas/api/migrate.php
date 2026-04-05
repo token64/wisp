@@ -162,4 +162,107 @@ SQL);
     if (!fa_column_exists($pdo, 'cables', 'fiber_map_json')) {
         $pdo->exec('ALTER TABLE cables ADD COLUMN fiber_map_json TEXT NOT NULL DEFAULT \'[]\'');
     }
+    if (!fa_column_exists($pdo, 'cables', 'fiber_spec')) {
+        $pdo->exec('ALTER TABLE cables ADD COLUMN fiber_spec TEXT NOT NULL DEFAULT \'\'');
+    }
+
+    if (!fa_column_exists($pdo, 'terminals', 'marker_color')) {
+        $pdo->exec("ALTER TABLE terminals ADD COLUMN marker_color TEXT NOT NULL DEFAULT 'green'");
+    }
+    if (!fa_column_exists($pdo, 'terminals', 'drop_fiber')) {
+        $pdo->exec('ALTER TABLE terminals ADD COLUMN drop_fiber INTEGER');
+    }
+    if (!fa_column_exists($pdo, 'terminals', 'source_pon_id')) {
+        $pdo->exec('ALTER TABLE terminals ADD COLUMN source_pon_id INTEGER REFERENCES pons(id) ON DELETE SET NULL');
+    }
+    if (!fa_column_exists($pdo, 'terminals', 'source_olt_card_id')) {
+        $pdo->exec(
+            'ALTER TABLE terminals ADD COLUMN source_olt_card_id INTEGER REFERENCES olt_cards(id) ON DELETE SET NULL'
+        );
+    }
+    if (!fa_column_exists($pdo, 'terminals', 'source_pon_number')) {
+        $pdo->exec('ALTER TABLE terminals ADD COLUMN source_pon_number INTEGER');
+    }
+    if (fa_column_exists($pdo, 'terminals', 'source_olt_card_id')) {
+        $pdo->exec(
+            'UPDATE terminals SET source_olt_card_id = (SELECT olt_card_id FROM pons WHERE pons.id = terminals.source_pon_id), source_pon_number = (SELECT pon_number FROM pons WHERE pons.id = terminals.source_pon_id) WHERE source_pon_id IS NOT NULL AND (source_olt_card_id IS NULL OR source_pon_number IS NULL)'
+        );
+    }
+
+    if (!fa_column_exists($pdo, 'terminals', 'drop_mufa_id')) {
+        $pdo->exec('ALTER TABLE terminals ADD COLUMN drop_mufa_id INTEGER REFERENCES mufas(id) ON DELETE SET NULL');
+    }
+    if (!fa_column_exists($pdo, 'terminals', 'drop_cable_id')) {
+        $pdo->exec('ALTER TABLE terminals ADD COLUMN drop_cable_id INTEGER REFERENCES cables(id) ON DELETE SET NULL');
+    }
+    if (!fa_column_exists($pdo, 'terminals', 'splitter_ref')) {
+        $pdo->exec('ALTER TABLE terminals ADD COLUMN splitter_ref TEXT NOT NULL DEFAULT \'\'');
+    }
+
+    if (!fa_column_exists($pdo, 'mufas', 'source_olt_card_id')) {
+        $pdo->exec(
+            'ALTER TABLE mufas ADD COLUMN source_olt_card_id INTEGER REFERENCES olt_cards(id) ON DELETE SET NULL'
+        );
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'source_pon_number')) {
+        $pdo->exec('ALTER TABLE mufas ADD COLUMN source_pon_number INTEGER');
+    }
+    if (fa_column_exists($pdo, 'mufas', 'source_olt_card_id')) {
+        $pdo->exec(
+            'UPDATE mufas SET source_olt_card_id = (SELECT olt_card_id FROM pons WHERE pons.id = mufas.linked_pon_id), source_pon_number = (SELECT pon_number FROM pons WHERE pons.id = mufas.linked_pon_id) WHERE linked_pon_id IS NOT NULL AND (source_olt_card_id IS NULL OR source_pon_number IS NULL)'
+        );
+    }
+
+    if (!fa_column_exists($pdo, 'cables', 'source_pon_id')) {
+        $pdo->exec('ALTER TABLE cables ADD COLUMN source_pon_id INTEGER REFERENCES pons(id) ON DELETE SET NULL');
+    }
+    if (!fa_column_exists($pdo, 'cables', 'source_olt_card_id')) {
+        $pdo->exec(
+            'ALTER TABLE cables ADD COLUMN source_olt_card_id INTEGER REFERENCES olt_cards(id) ON DELETE SET NULL'
+        );
+    }
+    if (!fa_column_exists($pdo, 'cables', 'source_pon_number')) {
+        $pdo->exec('ALTER TABLE cables ADD COLUMN source_pon_number INTEGER');
+    }
+    if (!fa_column_exists($pdo, 'cables', 'site_id')) {
+        $pdo->exec('ALTER TABLE cables ADD COLUMN site_id INTEGER REFERENCES sites(id) ON DELETE SET NULL');
+    }
+
+    foreach (['mufas', 'terminals', 'cables', 'buildings'] as $tbl) {
+        if (!fa_column_exists($pdo, $tbl, 'map_scope')) {
+            $pdo->exec("ALTER TABLE {$tbl} ADD COLUMN map_scope TEXT NOT NULL DEFAULT ''");
+        }
+    }
+
+    if (!fa_column_exists($pdo, 'mufas', 'splitter_enabled')) {
+        $pdo->exec('ALTER TABLE mufas ADD COLUMN splitter_enabled INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'splitter_qty')) {
+        $pdo->exec('ALTER TABLE mufas ADD COLUMN splitter_qty INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'splitter_type')) {
+        $pdo->exec("ALTER TABLE mufas ADD COLUMN splitter_type TEXT NOT NULL DEFAULT ''");
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'splitter_linked_pon_id')) {
+        $pdo->exec('ALTER TABLE mufas ADD COLUMN splitter_linked_pon_id INTEGER REFERENCES pons(id) ON DELETE SET NULL');
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'splitter_source_olt_card_id')) {
+        $pdo->exec(
+            'ALTER TABLE mufas ADD COLUMN splitter_source_olt_card_id INTEGER REFERENCES olt_cards(id) ON DELETE SET NULL'
+        );
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'splitter_source_pon_number')) {
+        $pdo->exec('ALTER TABLE mufas ADD COLUMN splitter_source_pon_number INTEGER');
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'splitter_use_fiber_color')) {
+        $pdo->exec('ALTER TABLE mufas ADD COLUMN splitter_use_fiber_color INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'splitters_json')) {
+        $pdo->exec("ALTER TABLE mufas ADD COLUMN splitters_json TEXT NOT NULL DEFAULT '[]'");
+    }
+    if (!fa_column_exists($pdo, 'mufas', 'fiber_io_json')) {
+        $pdo->exec(
+            "ALTER TABLE mufas ADD COLUMN fiber_io_json TEXT NOT NULL DEFAULT '{\"entradas\":[],\"salidas\":[]}'"
+        );
+    }
 }
