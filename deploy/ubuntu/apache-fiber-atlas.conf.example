@@ -1,0 +1,18 @@
+# Copiar a: /etc/apache2/sites-available/fiber-atlas.conf
+# Luego: sudo a2ensite fiber-atlas.conf && sudo a2dissite 000-default.conf && sudo systemctl reload apache2
+#
+# Ajuste ServerName si tiene un nombre en su red (opcional).
+
+<VirtualHost *:80>
+    ServerName fiber-atlas
+    DocumentRoot /var/www/wisp/fiber-atlas/public
+
+    <Directory /var/www/wisp/fiber-atlas/public>
+        Options FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/fiber-atlas-error.log
+    CustomLog ${APACHE_LOG_DIR}/fiber-atlas-access.log combined
+</VirtualHost>
