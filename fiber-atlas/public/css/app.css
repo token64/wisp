@@ -1221,9 +1221,25 @@ button.tree-del:hover {
 
 .map-hierarchy-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0.35rem;
   margin-bottom: 0.45rem;
+}
+
+.map-h-toolbar-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.map-h-toolbar-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
 }
 
 .map-hierarchy-body {
@@ -1261,18 +1277,41 @@ button.tree-del:hover {
   border-radius: 6px;
 }
 
+.nt-building-context {
+  box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.45);
+  border-radius: 8px;
+}
+
 .map-active-site-banner {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.45rem 0.5rem;
-  margin-bottom: 0.45rem;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  border-radius: 6px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  padding: 0.5rem 0.55rem;
+  margin-bottom: 0.55rem;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.32);
+  border-radius: 8px;
+}
+
+.map-ctx-card .map-ctx-line {
+  margin: 0;
+  color: var(--text);
+}
+
+.map-ctx-card .map-ctx-sub {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.map-ctx-card .map-ctx-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
 }
 
 .map-active-site-banner[hidden] {

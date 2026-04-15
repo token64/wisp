@@ -1988,11 +1988,11 @@
       await loadHierarchy();
       const br = findBuilding(bid);
       if (!br) return;
-      /** Igual que clic en «Edificio: …» en el árbol: activa ＋ Site en edificio / modo ＋ Site en mapa */
+      /** Igual que clic en «Edificio: …» en el árbol: activa ＋ Site (en POP) / modo ＋ Site en mapa */
       netSelection = { type: "building", id: bid };
       applyMapFieldContextFromSelection("building", bid);
       setStatus(
-        "Edificio activo en Red acceso. Use «＋ Site en edificio» o modo «＋ Site» + clic mapa. El modal es para editar datos.",
+        "POP activo en Red acceso. Use «＋ Site (en POP)» o herramienta «＋ Site» + clic en mapa. El modal es para editar datos.",
       );
       await openBuildingModal({
         id: br.id,
@@ -2164,11 +2164,12 @@
     '<p class="sub"><strong>Edif.</strong>→<strong>Site</strong>→OLT→tarj.→PON. S1,S2… orden red.</p>';
 
   const HINT_EMPTY_MAP =
-    '<p class="sub">Clic en <strong>Edificio: …</strong> → <strong>＋ Site en edificio</strong> (o <strong>＋ Site</strong> en la fila). Clic en <strong>site</strong>: mufas.</p>';
+    '<p class="sub"><strong>POP</strong> + <strong>cabecera (site)</strong> + OLT. Clic en fila; arriba se resume el contexto del mapa.</p>';
 
   function renderHierarchyPanel(el, emptyInnerHtml) {
     if (!el) return;
     const activeSiteId = state.mapFieldContext.siteId;
+    const ctxBid = state.mapFieldContext.buildingId;
     const blds = hierarchyCache.buildings || [];
     const orphans = hierarchyCache.orphan_sites || [];
     if (!blds.length && !orphans.length) {
@@ -2177,7 +2178,11 @@
     }
     let html = "";
     blds.forEach((b) => {
-      html += `<div class="nt-building" data-id="${b.id}">
+      const ctxBuildingHi =
+        activeSiteId == null &&
+        ctxBid != null &&
+        Number(ctxBid) === Number(b.id);
+      html += `<div class="nt-building${ctxBuildingHi ? " nt-building-context" : ""}" data-id="${b.id}">
         <div class="nt-head nt-building-head" data-sel="building" data-id="${b.id}">
           <span>Edificio: ${escapeHtml(b.name || "#" + b.id)}</span>
           <span class="nt-actions">
@@ -2245,8 +2250,8 @@
       const bid = state.mapFieldContext.buildingId;
       setStatus(
         bid
-          ? `Site: clic en el mapa (GPS del POP) o use «＋ Site en edificio». Edificio: ${findBuilding(bid)?.name || "?"}`
-          : "Site: primero clic en «Edificio: …» (cabecera), luego «＋ Site en edificio» o modo ＋ Site + mapa.",
+          ? `Site: clic en el mapa (GPS) o use «＋ Site (en POP)». POP: ${findBuilding(bid)?.name || "?"}`
+          : "Site: primero clic en «Edificio: …» (cabecera), luego «＋ Site (en POP)» o herramienta «＋ Site» + mapa.",
       );
     }
   }
@@ -2262,30 +2267,32 @@
       return;
     }
     el.hidden = false;
-    let inner = '<div class="map-active-site-text">';
-    if (bid) {
-      const b = findBuilding(bid);
-      inner += `<p style="margin:0 0 0.35rem 0"><strong>Edificio:</strong> ${escapeHtml(
-        b ? b.name || "#" + bid : "#" + bid
-      )} — al usar <strong>＋ Site</strong> en el mapa, el site queda bajo este edificio.</p>`;
-    }
+    const s = sid ? findSite(sid) : null;
+    const bPop = bid ? findBuilding(bid) : null;
+    const sn = sid != null ? siteOrderById.get(sid) : null;
+    const sTag = sn != null ? `S${sn} ` : "";
+    let body = "";
     if (sid) {
-      const s = findSite(sid);
-      const sn = siteOrderById.get(sid);
-      const sTag = sn != null ? `S${sn} ` : "";
-      inner += `<p style="margin:0"><strong>Cabecera:</strong> ${sTag}${escapeHtml(
-        s ? s.name || "#" + sid : "#" + sid
-      )} — mufas van aquí.</p>`;
+      const sname = escapeHtml(s ? s.name || "Site #" + sid : "Site #" + sid);
+      body += `<p class="map-ctx-line"><strong>Cabecera (site):</strong> ${sTag}${sname}</p>`;
+      body += `<p class="map-ctx-sub">Las <strong>mufas</strong> nuevas en el mapa se enlazan a esta cabecera.</p>`;
+      const sBid = s && s.building_id != null ? Number(s.building_id) : null;
+      if (sBid != null && Number.isFinite(sBid)) {
+        const br = findBuilding(sBid);
+        body += `<p class="map-ctx-sub">POP físico: <strong>${escapeHtml(
+          br ? br.name || "#" + sBid : "#" + sBid,
+        )}</strong> — para <em>otro</em> site en el mismo POP use «＋ Site (en POP)» o la herramienta «＋ Site» del mapa.</p>`;
+      } else {
+        body += `<p class="map-ctx-sub">Site sin POP físico. Asigne edificio en <strong>Inventario</strong> si lo necesita.</p>`;
+      }
+    } else if (bid) {
+      body += `<p class="map-ctx-line"><strong>POP físico seleccionado:</strong> ${escapeHtml(
+        bPop ? bPop.name || "#" + bid : "#" + bid,
+      )}</p>`;
+      body += `<p class="map-ctx-sub">Use <strong>＋ Site (en POP)</strong> (nombre) o la herramienta <strong>＋ Site</strong> del mapa y un clic (GPS).</p>`;
     }
-    inner += "</div><div style=\"display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.45rem\">";
-    if (bid) {
-      inner += '<button type="button" class="btn-sm" id="map-clear-active-building">Quitar edificio</button>';
-    }
-    if (sid) {
-      inner += '<button type="button" class="btn-sm" id="map-clear-active-site">Quitar cabecera</button>';
-    }
-    inner += "</div>";
-    el.innerHTML = inner;
+    body += `<div class="map-ctx-actions"><button type="button" class="btn-sm" id="map-clear-map-context">Limpiar contexto</button></div>`;
+    el.innerHTML = body;
   }
 
   async function onHierarchyTreeClick(ev) {
@@ -2438,7 +2445,7 @@
       const bid = state.mapFieldContext.buildingId;
       if (!bid) {
         alert(
-          "Paso 1: en «Red acceso», haga clic en el nombre del edificio (fila «Edificio: …»), no en los botones ＋.\nPaso 2: pulse «＋ Site en edificio» otra vez.\n\nAlternativa: en Inventario, botón «＋ Site» en la fila del edificio.",
+          "1) Clic en «Edificio: …» (texto de la fila), no en ✕ ni ＋.\n2) Pulse otra vez «＋ Site (en POP)».\n\nO use Inventario → «＋ Site» en la fila del edificio.",
         );
         return;
       }
@@ -2475,18 +2482,14 @@
   const mapOpenInv = document.getElementById("map-open-inventory");
   if (mapOpenInv) mapOpenInv.addEventListener("click", () => switchTab("network"));
   document.querySelector(".map-hierarchy")?.addEventListener("click", (ev) => {
-    if (ev.target.closest("#map-clear-active-site")) {
+    if (ev.target.closest("#map-clear-map-context")) {
       state.mapFieldContext.siteId = null;
-      updateMapActiveSiteBanner();
-      renderAllHierarchyTrees();
-      if (state.mode === "mufa") setMode("mufa");
-      return;
-    }
-    if (ev.target.closest("#map-clear-active-building")) {
       state.mapFieldContext.buildingId = null;
       updateMapActiveSiteBanner();
       renderAllHierarchyTrees();
-      if (state.mode === "org_site") setMode("org_site");
+      if (state.mode === "mufa") setMode("mufa");
+      else if (state.mode === "org_site") setMode("org_site");
+      setStatus("Contexto de mapa limpiado.");
     }
   });
 
@@ -5329,7 +5332,7 @@
         const bid = state.mapFieldContext.buildingId;
         if (!bid) {
           alert(
-            "Primero: clic en la cabecera «Edificio: …» en Red acceso (no en los botones).\nLuego: «＋ Site en edificio» (sin mapa) o active de nuevo «＋ Site» y clique el mapa para GPS.",
+            "1) Clic en «Edificio: …» en Red acceso (cabecera de fila).\n2) «＋ Site (en POP)» (solo nombre) o herramienta «＋ Site» y clic en el mapa (GPS).",
           );
           return;
         }

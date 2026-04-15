@@ -72,21 +72,24 @@
           <section class="map-hierarchy" aria-labelledby="map-hierarchy-title">
             <h2 id="map-hierarchy-title" class="map-hierarchy-title">Red acceso</h2>
             <p class="sub map-hierarchy-micro">
-              Clic en <strong>Edificio: …</strong> (cabecera de la fila) → luego <strong>＋ Site en edificio</strong>.
-              «Site suelto» = sin edificio (migración).
+              <strong>1)</strong> Elija fila en el árbol. <strong>2)</strong> Cree con los botones o use las herramientas del mapa
+              (＋ Site = GPS). «Site suelto» = sin POP físico.
             </p>
+            <div id="map-active-site-banner" class="map-active-site-banner map-ctx-card" hidden></div>
             <div class="map-hierarchy-toolbar">
-              <button type="button" id="map-btn-add-building" class="btn-sm">＋ Edificio</button>
-              <button type="button" id="map-btn-site-in-building" class="btn-sm btn-primary">
-                ＋ Site en edificio
-              </button>
-              <button type="button" id="map-btn-add-orphan-site" class="btn-sm">＋ Site suelto</button>
-              <button type="button" id="map-btn-add-olt" class="btn-sm">＋ OLT</button>
-              <button type="button" id="map-btn-hierarchy-refresh" class="btn-sm" title="Actualizar árbol">
-                ↻
-              </button>
+              <span class="map-h-toolbar-label">Crear</span>
+              <div class="map-h-toolbar-btns">
+                <button type="button" id="map-btn-add-building" class="btn-sm">＋ Edificio</button>
+                <button type="button" id="map-btn-site-in-building" class="btn-sm btn-primary">
+                  ＋ Site (en POP)
+                </button>
+                <button type="button" id="map-btn-add-orphan-site" class="btn-sm">＋ Site suelto</button>
+                <button type="button" id="map-btn-add-olt" class="btn-sm">＋ OLT</button>
+                <button type="button" id="map-btn-hierarchy-refresh" class="btn-sm" title="Actualizar árbol">
+                  ↻
+                </button>
+              </div>
             </div>
-            <div id="map-active-site-banner" class="map-active-site-banner" hidden></div>
             <div id="map-hierarchy-body" class="map-hierarchy-body"></div>
             <p class="sub map-hierarchy-link">
               <button type="button" class="btn-link" id="map-open-inventory">Inventario (PON, potencias)…</button>
