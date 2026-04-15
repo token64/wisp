@@ -2155,7 +2155,7 @@
     '<p class="sub"><strong>Edif.</strong>→<strong>Site</strong>→OLT→tarj.→PON. S1,S2… orden red.</p>';
 
   const HINT_EMPTY_MAP =
-    '<p class="sub">Flujo: herramientas <strong>＋ Edificio</strong> / <strong>＋ Site</strong> en mapa, o botones en el árbol. Clic <strong>site</strong>: mufas a esa cabecera.</p>';
+    '<p class="sub">Clic en <strong>Edificio: …</strong> → <strong>＋ Site en edificio</strong> (o <strong>＋ Site</strong> en la fila). Clic en <strong>site</strong>: mufas.</p>';
 
   function renderHierarchyPanel(el, emptyInnerHtml) {
     if (!el) return;
@@ -2236,8 +2236,8 @@
       const bid = state.mapFieldContext.buildingId;
       setStatus(
         bid
-          ? `Site: clic mapa. Edificio: ${findBuilding(bid)?.name || "?"}`
-          : "Site: primero clic en «Edificio: …» en el árbol de red.",
+          ? `Site: clic en el mapa (GPS del POP) o use «＋ Site en edificio». Edificio: ${findBuilding(bid)?.name || "?"}`
+          : "Site: primero clic en «Edificio: …» (cabecera), luego «＋ Site en edificio» o modo ＋ Site + mapa.",
       );
     }
   }
@@ -2314,14 +2314,10 @@
     const addSiteUnder = ev.target.closest("[data-add-site]");
     if (addSiteUnder) {
       const name = prompt("Nombre del site (cabecera / POP lógico) en este edificio?");
-      if (!name) return;
+      if (!name || !String(name).trim()) return;
       try {
-        await api("POST", "sites", {
-          building_id: Number(addSiteUnder.dataset.addSite),
-          name,
-          notes: "",
-        });
-        await loadHierarchy();
+        await postSiteUnderBuilding(Number(addSiteUnder.dataset.addSite), name);
+        setStatus("Site creado bajo el edificio.");
       } catch (e) {
         alert(e.message);
       }
@@ -2426,6 +2422,26 @@
   const mapBtnOrphan = document.getElementById("map-btn-add-orphan-site");
   if (mapBtnOrphan) {
     mapBtnOrphan.addEventListener("click", () => document.getElementById("btn-add-orphan-site").click());
+  }
+  const mapBtnSiteInBuilding = document.getElementById("map-btn-site-in-building");
+  if (mapBtnSiteInBuilding) {
+    mapBtnSiteInBuilding.addEventListener("click", async () => {
+      const bid = state.mapFieldContext.buildingId;
+      if (!bid) {
+        alert(
+          "Paso 1: en «Red acceso», haga clic en el nombre del edificio (fila «Edificio: …»), no en los botones ＋.\nPaso 2: pulse «＋ Site en edificio» otra vez.\n\nAlternativa: en Inventario, botón «＋ Site» en la fila del edificio.",
+        );
+        return;
+      }
+      const name = prompt("Nombre del site / cabecera (POP lógico) en este edificio?");
+      if (!name || !String(name).trim()) return;
+      try {
+        await postSiteUnderBuilding(bid, name);
+        setStatus(`Site creado bajo «${findBuilding(bid)?.name || "edificio"}».`);
+      } catch (e) {
+        alert(e.message);
+      }
+    });
   }
   const mapBtnOlt = document.getElementById("map-btn-add-olt");
   if (mapBtnOlt) {
@@ -2532,6 +2548,31 @@
     return r;
   }
 
+  /**
+   * Crea un site bajo un edificio. lat/lng opcionales (p. ej. modo «＋ Site» en el mapa).
+   * Tras guardar, selecciona el site y actualiza el contexto del mapa.
+   */
+  async function postSiteUnderBuilding(buildingId, name, lat, lng) {
+    const bid = Number(buildingId);
+    if (!Number.isFinite(bid) || bid <= 0) throw new Error("Edificio no válido.");
+    const nm = String(name || "").trim();
+    if (!nm) throw new Error("Falta nombre del site.");
+    const body = { building_id: bid, name: nm, notes: "" };
+    if (lat != null && lng != null && Number.isFinite(+lat) && Number.isFinite(+lng)) {
+      body.lat = +lat;
+      body.lng = +lng;
+    }
+    const res = await api("POST", "sites", body);
+    await loadHierarchy();
+    const newId = res && res.id != null ? Number(res.id) : 0;
+    if (newId > 0) {
+      netSelection = { type: "site", id: newId };
+      applyMapFieldContextFromSelection("site", newId);
+      renderNetDetail();
+    }
+    return res;
+  }
+
   function buildingOptionsHtml(selectedId) {
     let h = '<option value="">— Sin edificio —</option>';
     (hierarchyCache.buildings || []).forEach((b) => {
@@ -2630,20 +2671,8 @@
         const name = prompt("Nombre del site (cabecera / POP lógico) en este edificio?");
         if (!name || !name.trim()) return;
         try {
-          const res = await api("POST", "sites", {
-            building_id: id,
-            name: name.trim(),
-            notes: "",
-          });
-          await loadHierarchy();
-          if (res.id) {
-            netSelection = { type: "site", id: res.id };
-            applyMapFieldContextFromSelection("site", res.id);
-            renderNetDetail();
-          } else {
-            renderNetDetail();
-          }
-          renderAllHierarchyTrees();
+          await postSiteUnderBuilding(id, name);
+          setStatus("Site creado en este edificio.");
         } catch (e) {
           alert(e.message);
         }
@@ -2685,6 +2714,9 @@
           </p>
         </div>
         <div class="form-grid" style="margin-top:1rem">
+          <p class="sub" style="margin:0 0 0.35rem">
+            <strong>Edificio:</strong> elija abajo y <strong>Guardar</strong> para colgar este site bajo ese POP físico (o «Sin edificio» si va suelto).
+          </p>
           <label>Edificio físico<select id="nd-building-id">${buildingOptionsHtml(s.building_id)}</select></label>
           <label>Nombre<input type="text" id="nd-name" value="${escapeHtml(s.name)}" /></label>
           <label>Lat (opc.)<input type="text" id="nd-lat" value="${s.lat != null ? s.lat : ""}" /></label>
@@ -5288,22 +5320,15 @@
         const bid = state.mapFieldContext.buildingId;
         if (!bid) {
           alert(
-            "Seleccione un edificio en el árbol (clic en la cabecera «Edificio: …») antes de colocar el site en el mapa."
+            "Primero: clic en la cabecera «Edificio: …» en Red acceso (no en los botones).\nLuego: «＋ Site en edificio» (sin mapa) o active de nuevo «＋ Site» y clique el mapa para GPS.",
           );
           return;
         }
         const name = prompt("Nombre del site / cabecera (POP lógico) en este edificio?");
         if (!name || !name.trim()) return;
         try {
-          await api("POST", "sites", {
-            building_id: bid,
-            name: name.trim(),
-            notes: "",
-            lat: e.latlng.lat,
-            lng: e.latlng.lng,
-          });
-          await loadHierarchy();
-          setStatus("Site creado. Siga con OLT / tarjetas desde el árbol.");
+          await postSiteUnderBuilding(bid, name, e.latlng.lat, e.latlng.lng);
+          setStatus("Site creado con GPS. Siga con OLT desde el árbol.");
           setMode("");
         } catch (err) {
           alert(err.message);
