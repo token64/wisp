@@ -1969,6 +1969,42 @@
     (hierarchyCache.orphan_sites || []).forEach((s) => fn(s, null));
   }
 
+  function bindBuildingMarkerClick(mk, bid) {
+    mk.off("click");
+    mk.on("click", async (ev) => {
+      L.DomEvent.stopPropagation(ev);
+      if (state.mode === "cable") {
+        await loadHierarchy();
+        const br = findBuilding(bid);
+        const la = br && br.lat != null ? Number(br.lat) : NaN;
+        const ln = br && br.lng != null ? Number(br.lng) : NaN;
+        if (Number.isFinite(la) && Number.isFinite(ln)) {
+          appendCableDraftVertex(la, ln);
+        } else {
+          setStatus("Cable: este edificio no tiene GPS; use el mapa o una mufa.");
+        }
+        return;
+      }
+      await loadHierarchy();
+      const br = findBuilding(bid);
+      if (!br) return;
+      /** Igual que clic en «Edificio: …» en el árbol: activa ＋ Site en edificio / modo ＋ Site en mapa */
+      netSelection = { type: "building", id: bid };
+      applyMapFieldContextFromSelection("building", bid);
+      setStatus(
+        "Edificio activo en Red acceso. Use «＋ Site en edificio» o modo «＋ Site» + clic mapa. El modal es para editar datos.",
+      );
+      await openBuildingModal({
+        id: br.id,
+        name: br.name,
+        address: br.address || "",
+        lat: br.lat,
+        lng: br.lng,
+        notes: br.notes || "",
+      });
+    });
+  }
+
   function syncBuildingMarkers() {
     if (!state.map || !state.buildingLayer) return;
     const scopeKey = getActiveMapScopeKey();
@@ -1994,39 +2030,12 @@
         const tt = mk.getTooltip();
         if (tt) tt.setContent(escapeHtml(label));
       } else {
-        const bid = b.id;
         mk = L.marker([lat, lng], { icon: iconBuilding });
         mk.bindTooltip(escapeHtml(label), { sticky: true });
-        mk.on("click", async (ev) => {
-          L.DomEvent.stopPropagation(ev);
-          if (state.mode === "cable") {
-            await loadHierarchy();
-            const br = findBuilding(bid);
-            const la = br && br.lat != null ? Number(br.lat) : NaN;
-            const ln = br && br.lng != null ? Number(br.lng) : NaN;
-            if (Number.isFinite(la) && Number.isFinite(ln)) {
-              appendCableDraftVertex(la, ln);
-            } else {
-              setStatus("Cable: este edificio no tiene GPS; use el mapa o una mufa.");
-            }
-            return;
-          }
-          await loadHierarchy();
-          const br = findBuilding(bid);
-          if (br) {
-            await openBuildingModal({
-              id: br.id,
-              name: br.name,
-              address: br.address || "",
-              lat: br.lat,
-              lng: br.lng,
-              notes: br.notes || "",
-            });
-          }
-        });
         mk.addTo(state.buildingLayer);
-        state.buildingMarkers.set(bid, mk);
+        state.buildingMarkers.set(b.id, mk);
       }
+      bindBuildingMarkerClick(mk, b.id);
     });
     state.buildingMarkers.forEach((mk, id) => {
       if (!seen.has(id)) {
