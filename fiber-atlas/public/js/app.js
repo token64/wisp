@@ -3855,6 +3855,28 @@
     state.modalPonScopeKey = -1;
     state.pendingPoint = null;
     fillBuildingSitesHint(isNew ? null : rid);
+    const delRow = document.getElementById("f-building-delete-row");
+    const delBtn = document.getElementById("modal-del-building");
+    if (delRow && delBtn) {
+      delRow.hidden = isNew;
+      delBtn.onclick = isNew
+        ? null
+        : async () => {
+            if (!confirm("¿Borrar edificio? Los sites quedarán sin edificio.")) return;
+            try {
+              await api("DELETE", "buildings", null, rid);
+              if (netSelection && netSelection.type === "building" && netSelection.id === rid) {
+                netSelection = null;
+              }
+              if (state.mapFieldContext.buildingId === rid) state.mapFieldContext.buildingId = null;
+              showModal(false);
+              await loadHierarchy();
+              renderNetDetail();
+            } catch (e) {
+              alert(e.message);
+            }
+          };
+    }
     showModal(true);
   }
 

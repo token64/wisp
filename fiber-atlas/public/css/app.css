@@ -1288,6 +1288,20 @@ button.tree-del:hover {
   margin: 0;
 }
 
+.f-building-delete-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+
+.f-building-delete-row[hidden] {
+  display: none !important;
+}
+
 .btn-link {
   padding: 0;
   border: none;
