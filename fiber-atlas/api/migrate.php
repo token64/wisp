@@ -21,6 +21,17 @@ function fa_column_exists(PDO $pdo, string $table, string $column): bool
     return false;
 }
 
+function fa_table_exists(PDO $pdo, string $table): bool
+{
+    if (!preg_match('/^[a-z_][a-z0-9_]*$/i', $table)) {
+        return false;
+    }
+    $st = $pdo->prepare('SELECT 1 FROM sqlite_master WHERE type = ? AND name = ? LIMIT 1');
+    $st->execute(['table', $table]);
+
+    return (bool) $st->fetchColumn();
+}
+
 function fa_run_migrations(PDO $pdo): void
 {
     $pdo->exec('PRAGMA foreign_keys = ON');
@@ -228,8 +239,8 @@ SQL);
         $pdo->exec('ALTER TABLE cables ADD COLUMN site_id INTEGER REFERENCES sites(id) ON DELETE SET NULL');
     }
 
-    foreach (['mufas', 'terminals', 'cables', 'buildings'] as $tbl) {
-        if (!fa_column_exists($pdo, $tbl, 'map_scope')) {
+    foreach (['mufas', 'terminals', 'cables', 'poles', 'buildings'] as $tbl) {
+        if (fa_table_exists($pdo, $tbl) && !fa_column_exists($pdo, $tbl, 'map_scope')) {
             $pdo->exec("ALTER TABLE {$tbl} ADD COLUMN map_scope TEXT NOT NULL DEFAULT ''");
         }
     }
@@ -264,5 +275,23 @@ SQL);
         $pdo->exec(
             "ALTER TABLE mufas ADD COLUMN fiber_io_json TEXT NOT NULL DEFAULT '{\"entradas\":[],\"salidas\":[]}'"
         );
+    }
+
+    if (!fa_table_exists($pdo, 'poles')) {
+        $pdo->exec(<<<'SQL'
+CREATE TABLE poles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL DEFAULT '',
+  lat REAL NOT NULL,
+  lng REAL NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  map_scope TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+SQL);
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_poles_lat_lng ON poles (lat, lng)');
+    }
+    if (!fa_column_exists($pdo, 'poles', 'map_scope')) {
+        $pdo->exec("ALTER TABLE poles ADD COLUMN map_scope TEXT NOT NULL DEFAULT ''");
     }
 }

@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/migrate.php';
 
 const ALLOWED = [
-    'mufas', 'terminals', 'cables', 'buildings', 'sites', 'olts', 'olt_cards', 'pons',
+    'mufas', 'terminals', 'cables', 'poles', 'buildings', 'sites', 'olts', 'olt_cards', 'pons',
     'pon_power_readings', 'price_catalog', 'budget_projects', 'budget_lines', 'hierarchy',
     'map_project_bundle', 'map_project_purge',
 ];
@@ -123,7 +123,8 @@ function fa_normalize_map_scope($raw): string
     if (strlen($s) > 200) {
         $s = substr($s, 0, 200);
     }
-    if (!preg_match('/^[a-zA-Z0-9_.|-]+$/', $s)) {
+    /* Antes: solo [a-zA-Z0-9_.|-]; eso vaciaba map_scope si el cliente traía otros caracteres (importes) y el POSTe no coincidía con el GET filtrado. */
+    if (preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/', $s)) {
         return '';
     }
     return $s;
@@ -132,7 +133,7 @@ function fa_normalize_map_scope($raw): string
 /** PUT: conservar map_scope en BD si el cliente no lo envía. */
 function fa_put_map_scope(PDO $pdo, string $table, int $id, array $input): string
 {
-    $allowed = ['mufas', 'terminals', 'cables', 'buildings'];
+    $allowed = ['mufas', 'terminals', 'cables', 'poles', 'buildings'];
     if (!in_array($table, $allowed, true)) {
         return '';
     }
@@ -610,6 +611,9 @@ if ($resource === 'map_project_bundle' && $method === 'GET') {
     $st = $pdo->prepare("SELECT * FROM terminals WHERE {$w} ORDER BY id");
     $st->execute([$pid]);
     $bundleTerminals = $st->fetchAll();
+    $st = $pdo->prepare("SELECT * FROM poles WHERE {$w} ORDER BY id");
+    $st->execute([$pid]);
+    $bundlePoles = $st->fetchAll();
     jsonOut([
         'ok' => true,
         'data' => [
@@ -617,6 +621,7 @@ if ($resource === 'map_project_bundle' && $method === 'GET') {
             'mufas' => $bundleMufas,
             'cables' => $bundleCables,
             'terminals' => $bundleTerminals,
+            'poles' => $bundlePoles,
         ],
     ]);
 }
@@ -676,7 +681,7 @@ if ($method === 'GET') {
             $params[] = $fid;
         }
     }
-    if (in_array($resource, ['mufas', 'terminals', 'cables', 'buildings'], true)) {
+    if (in_array($resource, ['mufas', 'terminals', 'cables', 'poles', 'buildings'], true)) {
         $ms = isset($_GET['map_scope']) ? fa_normalize_map_scope($_GET['map_scope']) : '';
         if ($ms !== '') {
             $inc = isset($_GET['include_unscoped']) && (string) $_GET['include_unscoped'] === '1';
@@ -714,6 +719,7 @@ if ($method === 'POST') {
         try {
             $pdo->beginTransaction();
             $pdo->prepare("DELETE FROM terminals WHERE {$w}")->execute([$pid]);
+            $pdo->prepare("DELETE FROM poles WHERE {$w}")->execute([$pid]);
             $pdo->prepare("DELETE FROM cables WHERE {$w}")->execute([$pid]);
             $pdo->prepare("DELETE FROM mufas WHERE {$w}")->execute([$pid]);
             $pdo->prepare("DELETE FROM buildings WHERE {$w}")->execute([$pid]);
@@ -941,6 +947,20 @@ if ($method === 'POST') {
             $sref,
             (string) ($input['notes'] ?? ''),
             $msTe,
+        ]);
+        jsonOut(['ok' => true, 'id' => (int) $pdo->lastInsertId()]);
+    }
+    if ($resource === 'poles') {
+        $msPo = fa_normalize_map_scope($input['map_scope'] ?? '');
+        $st = $pdo->prepare(
+            'INSERT INTO poles (name, lat, lng, notes, map_scope) VALUES (?,?,?,?,?)'
+        );
+        $st->execute([
+            (string) ($input['name'] ?? ''),
+            (float) ($input['lat'] ?? 0),
+            (float) ($input['lng'] ?? 0),
+            (string) ($input['notes'] ?? ''),
+            $msPo,
         ]);
         jsonOut(['ok' => true, 'id' => (int) $pdo->lastInsertId()]);
     }
@@ -1212,6 +1232,21 @@ if ($method === 'PUT') {
         ]);
         jsonOut(['ok' => true, 'updated' => $st->rowCount()]);
     }
+    if ($resource === 'poles') {
+        $msPop = fa_put_map_scope($pdo, 'poles', $pid, $input);
+        $st = $pdo->prepare(
+            'UPDATE poles SET name=?, lat=?, lng=?, notes=?, map_scope=? WHERE id=?'
+        );
+        $st->execute([
+            (string) ($input['name'] ?? ''),
+            (float) ($input['lat'] ?? 0),
+            (float) ($input['lng'] ?? 0),
+            (string) ($input['notes'] ?? ''),
+            $msPop,
+            $pid,
+        ]);
+        jsonOut(['ok' => true, 'updated' => $st->rowCount()]);
+    }
     if ($resource === 'cables') {
         $path = $input['path'] ?? null;
         if (is_array($path) && count($path) < 2) {
@@ -1325,7 +1360,7 @@ if ($method === 'PUT') {
 
 if ($method === 'DELETE') {
     $deletable = [
-        'mufas', 'terminals', 'cables', 'buildings', 'sites', 'olts', 'olt_cards', 'pons',
+        'mufas', 'terminals', 'cables', 'poles', 'buildings', 'sites', 'olts', 'olt_cards', 'pons',
         'pon_power_readings', 'price_catalog', 'budget_projects', 'budget_lines',
     ];
     if (!in_array($resource, $deletable, true)) {

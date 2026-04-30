@@ -17,7 +17,13 @@
     }
   } catch (_) {}
 
-  const API = "../api/index.php";
+  const API = (function () {
+    try {
+      return new URL("../api/index.php", window.location.href).href;
+    } catch (_) {
+      return "../api/index.php";
+    }
+  })();
 
   /** TIA-598-C (12 colores, se repiten en cables mayores) */
   const FIBER_COLORS = [
@@ -56,6 +62,7 @@
     mode: "",
     mufaLayer: null,
     terminalLayer: null,
+    poleLayer: null,
     cableLayer: null,
     buildingLayer: null,
     /** id → L.Marker (edificios con GPS; no mezclar con state.markers que loadAll vacía) */
@@ -82,6 +89,8 @@
     mufaSplitterDlgIdx: null,
     /** Evita guardar vista del mapa antes del primer fitBounds (corría moveend con Madrid y bloqueaba el encuadre). */
     mapViewPersistenceEnabled: false,
+    /** Evita abrir dos modales de colocación si hay doble clic o eventos reentrantes. */
+    placementOpening: false,
   };
 
   let hierarchyCache = { buildings: [], orphan_sites: [] };
@@ -144,6 +153,14 @@
     iconAnchor: [22, 40],
     popupAnchor: [0, -34],
     className: "fa-building-leaflet-icon",
+  });
+
+  const iconPole = L.icon({
+    iconUrl: "img/icon-poste.svg",
+    iconSize: [28, 34],
+    iconAnchor: [14, 34],
+    popupAnchor: [0, -28],
+    className: "fa-pole-leaflet-icon",
   });
 
   function fiberColor(i) {
@@ -224,6 +241,9 @@
 
   function setMode(mode) {
     state.mode = mode;
+    if (mode !== "mufa" && mode !== "terminal" && mode !== "pole") {
+      state.placementOpening = false;
+    }
     document.querySelectorAll(".tools button[data-mode]").forEach((btn) => {
       const dm = btn.getAttribute("data-mode");
       const same = mode === "" ? dm === "" : dm === mode;
@@ -248,9 +268,11 @@
               : "Mufa: clic mapa. Elige site en árbol."
             : mode === "terminal"
               ? "Terminal: clic mapa."
-              : mode === "cable"
-                ? "Cable: clic en mapa o en mufa/terminal/cable para anclar vértices. Luego «Finalizar cable»."
-                : "Listo."
+              : mode === "pole"
+                ? "Poste: clic mapa (referencia pasiva; sin PON ni site)."
+                : mode === "cable"
+                  ? "Cable: clic en mapa o en mufa/terminal/poste/cable para anclar vértices. Luego «Finalizar cable»."
+                  : "Listo."
     );
   }
 
@@ -285,7 +307,7 @@
     if (fin) fin.disabled = state.cableDraft.length < 2;
     if (can) can.disabled = state.cableDraft.length === 0;
     setStatus(
-      `Cable: ${state.cableDraft.length} punto(s). Clic en mapa, mufa, terminal o cable existente; luego «Finalizar cable».`
+      `Cable: ${state.cableDraft.length} punto(s). Clic en mapa, mufa, terminal, poste o cable existente; luego «Finalizar cable».`
     );
   }
 
@@ -304,15 +326,26 @@
       opt.headers["Content-Type"] = "application/json";
       opt.body = JSON.stringify(body);
     }
-    const res = await fetch(url, opt);
+    let res;
+    try {
+      res = await fetch(url, opt);
+    } catch (e) {
+      const m = e && e.message ? e.message : String(e);
+      throw new Error(
+        "No hay conexión con la API (" + m + "). Compruebe que abre la app por http://localhost/... y la ruta fiber-atlas/api/.",
+      );
+    }
     const text = await res.text();
     let data;
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error(text.slice(0, 200) || "Respuesta no JSON");
+      throw new Error(
+        (res.status >= 400 ? "HTTP " + res.status + " — " : "") +
+          (text.slice(0, 240) || "Respuesta no JSON del servidor"),
+      );
     }
-    if (!data.ok) throw new Error(data.error || res.statusText);
+    if (!data.ok) throw new Error(data.error || "HTTP " + res.status + " " + res.statusText);
     return data;
   }
 
@@ -454,6 +487,8 @@
   const MAP_PROJECT_EXPAND_KEY = "FA_MAP_PROJECT_EXPAND_V1";
   /** Si es "1", el mapa también muestra mufas/cables/… sin map_scope (datos antiguos). */
   const FA_MAP_INCLUDE_UNSCOPED_KEY = "FA_MAP_INCLUDE_UNSCOPED";
+  /** Secciones plegables del sidebar del mapa: { red, tools, lists } (true = abierto). */
+  const FA_MAP_SIDEBAR_ACC_KEY = "fa-map-sidebar-acc";
   /** Último centro y zoom del mapa (V2: V1 guardaba Madrid antes de cargar datos y bloqueaba fitBounds). */
   const FA_MAP_VIEW_KEY = "FA_MAP_LAST_VIEW_V2";
 
@@ -502,13 +537,53 @@
       if (!raw) return [];
       const arr = JSON.parse(raw);
       if (!Array.isArray(arr)) return [];
-      return arr.filter(
-        (p) =>
-          p &&
-          typeof p.id === "string" &&
-          typeof p.name === "string" &&
-          Array.isArray(p.sections)
-      );
+      let mutated = false;
+      const out = [];
+      for (const p of arr) {
+        if (!p || typeof p !== "object") continue;
+        let pname =
+          typeof p.name === "string" ? p.name : p.name != null ? String(p.name) : "";
+        pname = pname.trim() || "Proyecto";
+        let pid = p.id;
+        if (pid == null || String(pid).trim() === "") {
+          pid = newMapEntityId();
+          mutated = true;
+        } else {
+          const ps = String(pid).trim();
+          if (ps !== pid) mutated = true;
+          pid = ps;
+        }
+        if (!Array.isArray(p.sections) || p.sections.length === 0) {
+          out.push({ id: pid, name: pname, sections: [{ id: newMapEntityId(), name: "Sección" }] });
+          mutated = true;
+          continue;
+        }
+        const sections = [];
+        for (const s of p.sections) {
+          if (!s || typeof s !== "object") continue;
+          const sn0 =
+            typeof s.name === "string" ? s.name : s.name != null ? String(s.name) : "Sección";
+          let sid = s.id;
+          if (sid == null || String(sid).trim() === "") {
+            sid = newMapEntityId();
+            mutated = true;
+          } else {
+            const ss = String(sid).trim();
+            if (ss !== sid) mutated = true;
+            sid = ss;
+          }
+          sections.push({ id: sid, name: sn0.trim() || "Sección" });
+        }
+        if (!sections.length) {
+          sections.push({ id: newMapEntityId(), name: "Sección" });
+          mutated = true;
+        }
+        out.push({ id: pid, name: pname, sections });
+      }
+      if (mutated) {
+        saveMapProjects(out);
+      }
+      return out;
     } catch (_) {
       return [];
     }
@@ -564,16 +639,45 @@
   function ensureActiveProjectValid() {
     const projects = loadMapProjects();
     if (!projects.length) return;
+    const firstWithSection = projects.find(
+      (x) => Array.isArray(x.sections) && x.sections.length > 0 && String(x.sections[0].id || "").trim() !== "",
+    );
+    if (!firstWithSection) return;
     let { projectId, sectionId } = getActiveProjectSection();
     const p = projects.find((x) => x.id === projectId);
-    if (!p || !p.sections.length) {
-      const q = projects[0];
-      setActiveProjectSection(q.id, q.sections[0].id);
+    if (!p || !Array.isArray(p.sections) || !p.sections.length) {
+      setActiveProjectSection(firstWithSection.id, firstWithSection.sections[0].id);
       return;
     }
-    if (!p.sections.some((s) => s.id === sectionId)) {
-      setActiveProjectSection(projectId, p.sections[0].id);
+    if (!p.sections.some((s) => s && s.id === sectionId)) {
+      setActiveProjectSection(p.id, p.sections[0].id);
     }
+  }
+
+  /** Alta en mapa: exige proyecto+sección para que map_scope no quede vacío. */
+  function requireActiveMapScopeForNewElement() {
+    ensureActiveProjectValid();
+    if (getActiveMapScopeKey()) return true;
+    const projects = loadMapProjects();
+    if (!projects.length) {
+      alert(
+        "Antes de colocar elementos en el mapa debe crear un proyecto y una sección.\n\nSe abre el asistente para hacerlo.",
+      );
+      openProjectWizard({ gate: true });
+      return false;
+    }
+    alert(
+      "No hay una sección de mapa activa. En el menú izquierdo, despliegue su proyecto y pulse una sección; luego guarde otra vez.",
+    );
+    try {
+      switchTab("map");
+    } catch (_) {}
+    renderNavProjectTree();
+    updateMapWorkContextBanner();
+    try {
+      setStatus("Falta elegir proyecto → sección en el menú lateral antes de guardar.");
+    } catch (_) {}
+    return false;
   }
 
   function getActiveMapScopeKey() {
@@ -590,6 +694,7 @@
   }
 
   function mapScopeForCreate() {
+    ensureActiveProjectValid();
     const k = getActiveMapScopeKey();
     return k ? { map_scope: k } : {};
   }
@@ -607,6 +712,61 @@
       return { map_scope: String(b.map_scope) };
     }
     return mapScopeForCreate();
+  }
+
+  /** Misma sección de mapa (`map_scope`): postes con el mismo ámbito comparten numeración 1…N por orden de creación (`id`). */
+  function poleScopeKeyForRow(row) {
+    const r = row.map_scope != null ? String(row.map_scope).trim() : "";
+    if (r) return r;
+    return getActiveMapScopeKey() || "";
+  }
+
+  function poleCreationOrderNumber(row) {
+    const sk = poleScopeKeyForRow(row);
+    const inScope = (p) => {
+      const pk = p.map_scope != null ? String(p.map_scope).trim() : "";
+      return pk === sk;
+    };
+    const list = (cache.poles || []).filter(inScope).sort((a, b) => Number(a.id) - Number(b.id));
+    const rid = row.id != null && row.id !== "" ? Number(row.id) : 0;
+    if (rid > 0 && Number.isFinite(rid)) {
+      const idx = list.findIndex((p) => Number(p.id) === rid);
+      if (idx >= 0) return idx + 1;
+    }
+    return list.length + 1;
+  }
+
+  function syncPoleModalChrome(type, row) {
+    const ex = document.getElementById("f-pole-extra");
+    const notesEl = document.getElementById("f-notes");
+    const notesLab = document.querySelector('label[for="f-notes"]');
+    if (ex) ex.style.display = type === "poles" ? "block" : "none";
+    if (notesEl) notesEl.placeholder = "";
+    if (notesLab) notesLab.textContent = "Notas";
+    if (type !== "poles") {
+      const t = document.getElementById("f-pole-order-title");
+      const h = document.getElementById("f-pole-order-hint");
+      if (t) t.textContent = "";
+      if (h) h.textContent = "";
+      return;
+    }
+    const n = poleCreationOrderNumber(row);
+    const rid = row.id != null && row.id !== "" ? Number(row.id) : 0;
+    const titleEl = document.getElementById("f-pole-order-title");
+    const hintEl = document.getElementById("f-pole-order-hint");
+    if (titleEl) titleEl.textContent = `Poste nº ${n}`;
+    if (hintEl) {
+      hintEl.textContent =
+        rid > 0
+          ? "El número es automático en esta sección (orden de creación). Use las notas para referencias a terminales, fibras o mangas."
+          : `Al guardar será el nº ${n} en esta sección (orden de creación).`;
+    }
+    document.getElementById("modal-title").textContent = `Poste nº ${n}`;
+    if (notesEl) {
+      notesEl.placeholder =
+        "Ej. cerca del terminal X, tramo hacia manga… (solo referencia en obra)";
+    }
+    if (notesLab) notesLab.textContent = "Notas (referencia)";
   }
 
   function updateMapWorkContextBanner() {
@@ -812,7 +972,7 @@
     const chk = document.getElementById("del-project-purge-server");
     const hint = document.getElementById("del-project-soft-hint");
     if (warn) {
-      warn.innerHTML = `Va a quitar del menú el proyecto <strong>${escapeHtml(projectName || "")}</strong> y todas sus secciones. Si marca borrar en servidor, se eliminan del mapa las mufas, cables, terminales y edificios (GPS) ligados a este proyecto.`;
+      warn.innerHTML = `Va a quitar del menú el proyecto <strong>${escapeHtml(projectName || "")}</strong> y todas sus secciones. Si marca borrar en servidor, se eliminan del mapa las mufas, cables, terminales, postes y edificios (GPS) ligados a este proyecto.`;
     }
     if (ph) ph.value = "";
     if (cc) cc.disabled = true;
@@ -1009,6 +1169,16 @@
         map_scope: scopeForOldRow(t.map_scope),
       });
     }
+
+    for (const p of entities.poles || []) {
+      await api("POST", "poles", {
+        name: p.name || "",
+        lat: Number(p.lat),
+        lng: Number(p.lng),
+        notes: p.notes || "",
+        map_scope: scopeForOldRow(p.map_scope),
+      });
+    }
   }
 
   function wireDeleteImportModals() {
@@ -1078,9 +1248,10 @@
           const nm = (ent.mufas || []).length;
           const nc = (ent.cables || []).length;
           const nt = (ent.terminals || []).length;
+          const np = (ent.poles || []).length;
           const sum = document.getElementById("import-project-summary");
           if (sum) {
-            sum.textContent = `Archivo: «${f.name}». Proyecto en archivo: «${data.project && data.project.name ? data.project.name : "?"}». Contiene: ${nb} edificios, ${nm} mufas, ${nc} cables, ${nt} terminales.`;
+            sum.textContent = `Archivo: «${f.name}». Proyecto en archivo: «${data.project && data.project.name ? data.project.name : "?"}». Contiene: ${nb} edificios, ${nm} mufas, ${nc} cables, ${nt} terminales, ${np} postes.`;
           }
           openImportProjectModal();
         } catch (e) {
@@ -1113,6 +1284,71 @@
         }
       });
     }
+  }
+
+  const FA_MAP_SIDEBAR_ACC_DEFAULT = { red: false, tools: false, lists: true };
+
+  function readMapSidebarAccState() {
+    const d = { ...FA_MAP_SIDEBAR_ACC_DEFAULT };
+    try {
+      const raw = localStorage.getItem(FA_MAP_SIDEBAR_ACC_KEY);
+      if (!raw) return d;
+      const o = JSON.parse(raw);
+      if (typeof o !== "object" || !o) return d;
+      return {
+        red: typeof o.red === "boolean" ? o.red : d.red,
+        tools: typeof o.tools === "boolean" ? o.tools : d.tools,
+        lists: typeof o.lists === "boolean" ? o.lists : d.lists,
+      };
+    } catch {
+      return d;
+    }
+  }
+
+  function applyMapSidebarAccState(state) {
+    document.querySelectorAll("#panel-map .sidebar-accordion[data-acc]").forEach((acc) => {
+      const key = acc.getAttribute("data-acc");
+      if (!key || !Object.prototype.hasOwnProperty.call(state, key)) return;
+      const open = state[key];
+      acc.classList.toggle("is-collapsed", !open);
+      const btn = acc.querySelector(".sidebar-acc-header");
+      const panel = acc.querySelector(".sidebar-acc-body");
+      if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (panel) panel.hidden = !open;
+    });
+  }
+
+  function wireMapSidebarAccordions() {
+    const stack = document.querySelector("#panel-map .sidebar-acc-stack");
+    if (!stack || stack.dataset.faAccBound === "1") return;
+
+    function toggleFromHeader(hdr) {
+      const acc = hdr && hdr.closest ? hdr.closest(".sidebar-accordion") : null;
+      if (!acc || !stack.contains(acc)) return;
+      const key = acc.getAttribute("data-acc");
+      if (!key) return;
+      const cur = readMapSidebarAccState();
+      const wasOpen = !acc.classList.contains("is-collapsed");
+      cur[key] = !wasOpen;
+      try {
+        localStorage.setItem(FA_MAP_SIDEBAR_ACC_KEY, JSON.stringify(cur));
+      } catch (_) {}
+      applyMapSidebarAccState(cur);
+    }
+
+    try {
+      applyMapSidebarAccState(readMapSidebarAccState());
+    } catch (e) {
+      console.warn("FiberAtlas: acordeón mapa (estado inicial)", e);
+    }
+
+    ["acc-btn-red", "acc-btn-tools", "acc-btn-lists"].forEach((id) => {
+      const hdr = document.getElementById(id);
+      if (!hdr) return;
+      hdr.addEventListener("click", () => toggleFromHeader(hdr));
+    });
+
+    stack.dataset.faAccBound = "1";
   }
 
   function initMapProjectsUi() {
@@ -1917,19 +2153,22 @@
 
   async function fetchInventoryIntoCache() {
     const qs = mapScopeQueryParams();
-    const [mufas, terminals, cables] = await Promise.all([
+    const [mufas, terminals, poles, cables] = await Promise.all([
       api("GET", "mufas", null, null, qs),
       api("GET", "terminals", null, null, qs),
+      api("GET", "poles", null, null, qs),
       api("GET", "cables", null, null, qs),
     ]);
     cache.mufas = mufas.data;
     cache.terminals = terminals.data;
+    cache.poles = poles.data;
     cache.cables = cables.data;
   }
 
   async function refreshInventoryForDetail() {
     await fetchInventoryIntoCache();
     renderNetDetail();
+    renderMapProjectSummary();
   }
 
   async function loadHierarchy() {
@@ -1952,6 +2191,7 @@
           renderNetDetail();
         }
       }
+      renderMapProjectSummary();
     } catch (e) {
       console.error(e);
       const msg = `<p class="sub">Error: ${escapeHtml(e.message)}</p>`;
@@ -1985,6 +2225,10 @@
         }
         return;
       }
+      if (state.mode === "mufa" || state.mode === "terminal" || state.mode === "pole") {
+        placementClickAt(ev.latlng.lat, ev.latlng.lng);
+        return;
+      }
       await loadHierarchy();
       const br = findBuilding(bid);
       if (!br) return;
@@ -2005,20 +2249,21 @@
     });
   }
 
-  function syncBuildingMarkers() {
-    if (!state.map || !state.buildingLayer) return;
+  function isBuildingInActiveMapScope(b) {
     const scopeKey = getActiveMapScopeKey();
     const allowUnscoped = localStorage.getItem(FA_MAP_INCLUDE_UNSCOPED_KEY) === "1";
-    function buildingVisibleForMapScope(b) {
-      if (!scopeKey) return true;
-      const ms = b.map_scope != null ? String(b.map_scope).trim() : "";
-      if (ms === scopeKey) return true;
-      if (!ms && allowUnscoped) return true;
-      return false;
-    }
+    if (!scopeKey) return true;
+    const ms = b.map_scope != null ? String(b.map_scope).trim() : "";
+    if (ms === scopeKey) return true;
+    if (!ms && allowUnscoped) return true;
+    return false;
+  }
+
+  function syncBuildingMarkers() {
+    if (!state.map || !state.buildingLayer) return;
     const seen = new Set();
     (hierarchyCache.buildings || []).forEach((b) => {
-      if (!buildingVisibleForMapScope(b)) return;
+      if (!isBuildingInActiveMapScope(b)) return;
       const lat = b.lat != null && b.lat !== "" ? Number(b.lat) : NaN;
       const lng = b.lng != null && b.lng !== "" ? Number(b.lng) : NaN;
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -3392,19 +3637,63 @@
   });
 
   /* ---------- Mapa (existente ampliado) ---------- */
+  function bindMapMarkerClick(marker, type, id) {
+    marker.off("click");
+    marker.on("click", (e) => {
+      L.DomEvent.stopPropagation(e);
+      if (state.mode === "cable") {
+        appendCableDraftVertex(e.latlng.lat, e.latlng.lng);
+        return;
+      }
+      if (state.mode === "mufa" || state.mode === "terminal" || state.mode === "pole") {
+        placementClickAt(e.latlng.lat, e.latlng.lng);
+        return;
+      }
+      const rowNow = findRow(type, id);
+      if (!rowNow) return;
+      selectItem(type, id);
+      void openModalFromRow(type, rowNow);
+    });
+  }
+
+  function bindCablePolylineClick(polyline, cableId) {
+    polyline.off("click");
+    polyline.on("click", (e) => {
+      L.DomEvent.stopPropagation(e);
+      if (state.mode === "cable") {
+        appendCableDraftVertex(e.latlng.lat, e.latlng.lng);
+        return;
+      }
+      if (state.mode === "mufa" || state.mode === "terminal" || state.mode === "pole") {
+        placementClickAt(e.latlng.lat, e.latlng.lng);
+        return;
+      }
+      const rowNow = findRow("cables", cableId);
+      if (!rowNow) return;
+      selectItem("cables", cableId);
+      void openModalFromRow("cables", rowNow);
+    });
+  }
+
   function renderMarker(type, row) {
     const id = row.id;
     const lat = Number(row.lat);
     const lng = Number(row.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     const icon =
-      type === "mufas" ? iconMufaFor(row) : iconTerminalFor(row.marker_color || "green");
+      type === "mufas"
+        ? iconMufaFor(row)
+        : type === "poles"
+          ? iconPole
+          : iconTerminalFor(row.marker_color || "green");
     const key = `${type}-${id}`;
     const rawName = row.name != null ? String(row.name).trim() : "";
     const tipLabel =
       type === "mufas"
         ? rawName || `Mufa #${id}`
-        : rawName || `Terminal #${id}`;
+        : type === "poles"
+          ? `Poste nº ${poleCreationOrderNumber(row)}`
+          : rawName || `Terminal #${id}`;
     if (state.markers.has(key)) {
       const mk = state.markers.get(key);
       mk.setLatLng([lat, lng]);
@@ -3412,23 +3701,20 @@
         mk.setIcon(iconMufaFor(row));
       } else if (type === "terminals") {
         mk.setIcon(iconTerminalFor(row.marker_color || "green"));
+      } else if (type === "poles") {
+        mk.setIcon(iconPole);
       }
       const tt = mk.getTooltip();
       if (tt) tt.setContent(escapeHtml(tipLabel));
       else mk.bindTooltip(escapeHtml(tipLabel), { sticky: true });
+      bindMapMarkerClick(mk, type, id);
       return;
     }
-    const m = L.marker([lat, lng], { icon }).addTo(type === "mufas" ? state.mufaLayer : state.terminalLayer);
+    const layer =
+      type === "mufas" ? state.mufaLayer : type === "poles" ? state.poleLayer : state.terminalLayer;
+    const m = L.marker([lat, lng], { icon }).addTo(layer);
     m.bindTooltip(escapeHtml(tipLabel), { sticky: true });
-    m.on("click", (e) => {
-      L.DomEvent.stopPropagation(e);
-      if (state.mode === "cable") {
-        appendCableDraftVertex(lat, lng);
-        return;
-      }
-      selectItem(type, id);
-      openModalFromRow(type, row);
-    });
+    bindMapMarkerClick(m, type, id);
     state.markers.set(key, m);
   }
 
@@ -3454,18 +3740,11 @@
       const pl = state.cables.get(key);
       pl.setLatLngs(latlngs);
       pl.setStyle({ color });
+      bindCablePolylineClick(pl, id);
       return;
     }
     const pl = L.polyline(latlngs, { color, weight: 4, opacity: 0.85 }).addTo(state.cableLayer);
-    pl.on("click", (e) => {
-      L.DomEvent.stopPropagation(e);
-      if (state.mode === "cable") {
-        appendCableDraftVertex(e.latlng.lat, e.latlng.lng);
-        return;
-      }
-      selectItem("cables", id);
-      openModalFromRow("cables", row);
-    });
+    bindCablePolylineClick(pl, id);
     state.cables.set(key, pl);
   }
 
@@ -3491,11 +3770,14 @@
     state.selectedType = type;
     state.selectedId = id;
     document.querySelectorAll(".item").forEach((el) => {
-      el.classList.toggle("selected", el.dataset.type === type && Number(el.dataset.id) === id);
+      el.classList.toggle(
+        "selected",
+        el.dataset.faRes === type && Number(el.dataset.faRid) === id,
+      );
     });
   }
 
-  let cache = { mufas: [], terminals: [], cables: [] };
+  let cache = { mufas: [], terminals: [], poles: [], cables: [] };
 
   const CABLE_ANCHOR_RADIUS_M = 40;
 
@@ -3510,6 +3792,68 @@
     return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
   }
 
+  /** Longitud2D del trazado en metros (Haversine entre vértices consecutivos; igual que distancias del modal de cable). */
+  function cablePathLengthMeters(path) {
+    if (!path || path.length < 2) return 0;
+    let t = 0;
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1];
+      const b = path[i];
+      if (!Array.isArray(a) || !Array.isArray(b) || a.length < 2 || b.length < 2) continue;
+      const la0 = Number(a[0]);
+      const ln0 = Number(a[1]);
+      const la1 = Number(b[0]);
+      const ln1 = Number(b[1]);
+      if (!Number.isFinite(la0) || !Number.isFinite(ln0) || !Number.isFinite(la1) || !Number.isFinite(ln1)) continue;
+      t += geoDistanceM(la0, ln0, la1, ln1);
+    }
+    return t;
+  }
+
+  function formatFiberMeters(m) {
+    if (!Number.isFinite(m) || m <= 0) return "0 m";
+    if (m < 1000) return `${Math.round(m)} m`;
+    return `${(m / 1000).toFixed(2)} km`;
+  }
+
+  function renderMapProjectSummary() {
+    const el = document.getElementById("map-project-summary");
+    if (!el) return;
+    ensureActiveProjectValid();
+    const scopeKey = getActiveMapScopeKey();
+    if (!scopeKey) {
+      el.innerHTML =
+        '<p class="map-project-summary-empty sub">Elija <strong>proyecto</strong> y <strong>sección</strong> en el menú lateral para ver el resumen.</p>';
+      return;
+    }
+    let fiberM = 0;
+    (cache.cables || []).forEach((c) => {
+      fiberM += cablePathLengthMeters(c.path);
+    });
+    const nMangas = (cache.cables || []).length;
+    const nTerm = (cache.terminals || []).length;
+    const nMufas = (cache.mufas || []).length;
+    let nBuild = 0;
+    let nSites = 0;
+    (hierarchyCache.buildings || []).forEach((b) => {
+      if (!isBuildingInActiveMapScope(b)) return;
+      nBuild += 1;
+      nSites += (b.sites || []).length;
+    });
+    el.innerHTML = `
+      <h3 class="map-project-summary-title">Resumen (sección activa)</h3>
+      <ul class="map-project-summary-stats">
+        <li><span class="k">Fibra trazada</span><span class="v">${escapeHtml(formatFiberMeters(fiberM))}</span></li>
+        <li><span class="k">Mangas</span><span class="v">${nMangas}</span></li>
+        <li><span class="k">Terminales</span><span class="v">${nTerm}</span></li>
+        <li><span class="k">Mufas</span><span class="v">${nMufas}</span></li>
+        <li><span class="k">Edificios</span><span class="v">${nBuild}</span></li>
+        <li><span class="k">Sites</span><span class="v">${nSites}</span></li>
+      </ul>
+      <p class="sub map-project-summary-hint">Metros: suma de trazados de todas las mangas visibles (Haversine, vértices del cable). POP: edificios y sites de inventario en esta sección.</p>
+    `;
+  }
+
   function neighborsWithin(lat, lng, radiusM, limit) {
     const out = [];
     (cache.mufas || []).forEach((m) => {
@@ -3519,6 +3863,16 @@
     (cache.terminals || []).forEach((t) => {
       const d = geoDistanceM(lat, lng, Number(t.lat), Number(t.lng));
       if (d <= radiusM) out.push({ kind: "terminal", id: t.id, name: t.name || "#" + t.id, dist: d });
+    });
+    (cache.poles || []).forEach((p) => {
+      const d = geoDistanceM(lat, lng, Number(p.lat), Number(p.lng));
+      if (d <= radiusM)
+        out.push({
+          kind: "pole",
+          id: p.id,
+          name: `Poste nº ${poleCreationOrderNumber(p)}`,
+          dist: d,
+        });
     });
     out.sort((a, b) => a.dist - b.dist);
     return out.slice(0, limit);
@@ -3534,7 +3888,7 @@
     if (!hits.length) {
       const e = document.createElement("p");
       e.className = "sub cable-anchor-empty";
-      e.textContent = `Nada dentro de ~${CABLE_ANCHOR_RADIUS_M} m (ajuste el trazado o cree la mufa/terminal).`;
+      e.textContent = `Nada dentro de ~${CABLE_ANCHOR_RADIUS_M} m (ajuste el trazado o cree la mufa/terminal/poste).`;
       container.appendChild(e);
       return;
     }
@@ -3543,7 +3897,7 @@
     hits.forEach((x) => {
       const li = document.createElement("li");
       const distStr = x.dist < 1000 ? `${Math.round(x.dist)} m` : `${(x.dist / 1000).toFixed(2)} km`;
-      const kindLabel = x.kind === "mufa" ? "Mufa" : "Terminal";
+      const kindLabel = x.kind === "mufa" ? "Mufa" : x.kind === "pole" ? "Poste" : "Terminal";
       const snippet = `${labelPrefix}: cerca de ${kindLabel} "${x.name}" (~${distStr})`;
       li.innerHTML = `<span>${kindLabel} <strong>${escapeHtml(String(x.name))}</strong> · ${distStr}</span> `;
       const btn = document.createElement("button");
@@ -3663,6 +4017,10 @@
   }
 
   async function loadAll() {
+    if (!state.map) {
+      setStatus("Mapa no listo. Espere un momento y recargue si persiste.");
+      return;
+    }
     setStatus("Cargando…");
     try {
       await fetchInventoryIntoCache();
@@ -3674,6 +4032,7 @@
 
       cache.mufas.forEach((r) => renderMarker("mufas", r));
       cache.terminals.forEach((r) => renderMarker("terminals", r));
+      (cache.poles || []).forEach((r) => renderMarker("poles", r));
       cache.cables.forEach((r) => renderCable(r));
 
       renderLists();
@@ -3730,7 +4089,13 @@
     try {
       const b = L.latLngBounds();
       const ctr = { n: 0 };
-      [state.buildingLayer, state.mufaLayer, state.terminalLayer, state.cableLayer].forEach((lg) => {
+      [
+        state.buildingLayer,
+        state.mufaLayer,
+        state.terminalLayer,
+        state.poleLayer,
+        state.cableLayer,
+      ].forEach((lg) => {
         safeExtendBoundsFromLayer(lg, b, ctr);
       });
       if (ctr.n === 0) {
@@ -3746,46 +4111,48 @@
 
   function renderLists() {
     const el = document.getElementById("lists");
-    const block = (title, type, rows, emptyMsg) => {
-      let h = `<h2>${title}</h2>`;
-      if (!rows.length) h += `<p class="sub" style="margin:0 0 .5rem">${emptyMsg}</p>`;
-      rows.forEach((r) => {
-        let meta =
-          type === "cables"
-            ? `${(r.path || []).length} pts · ${r.fiber_count} fibras`
-            : type === "terminals"
-              ? (() => {
-                  const mount = terminalMountLabel(r);
-                  const leg = !mount && (r.source_pon_id || r.source_olt_card_id) ? ponCascadeLabel(r) : "";
-                  const mc = r.marker_color || "green";
-                  const ml = { green: "M V", yellow: "M A", red: "M R" };
-                  let m = "";
-                  if (mount) m += escapeHtml(mount) + " · ";
-                  else if (leg) m += escapeHtml(leg) + " (leg.) · ";
-                  m += ml[mc] || mc;
-                  if (r.drop_fiber) m += ` · TIA${r.drop_fiber}`;
-                  return `${m} · ${Number(r.lat).toFixed(5)}, ${Number(r.lng).toFixed(5)}`;
-                })()
-              : `${Number(r.lat).toFixed(5)}, ${Number(r.lng).toFixed(5)}`;
-        if (type === "mufas") {
-          const pl = ponCascadeLabel(r);
-          if (pl) meta += ` · ${escapeHtml(pl)}`;
-        }
-        if (type === "cables" && r.fiber_spec) {
-          meta += ` · ${escapeHtml(r.fiber_spec)}`;
-        }
-        if (type === "cables" && (r.manga_label || r.splice_count)) {
-          meta += ` · ${escapeHtml(r.manga_label || "")}${r.splice_count ? " · " + r.splice_count + " empalmes" : ""}`;
-        }
-        if (type === "cables") {
-          const pl = ponCascadeLabel(r);
-          if (pl) meta += ` · ${escapeHtml(pl)}`;
-        }
-        const fiberBtn =
-          type === "cables"
-            ? `<button type="button" data-act="fibers">Fibras</button>`
-            : "";
-        h += `<div class="item" data-type="${type}" data-id="${r.id}">
+    const listSearchIconSvg = `<svg class="list-search-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.2-4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    const listSearchRowHtml = (ariaLabel, placeholder, inputClass) =>
+      `<div class="list-search-row" role="search" aria-label="${ariaLabel}">
+  <span class="list-search-icon" aria-hidden="true">${listSearchIconSvg}</span>
+  <input type="search" class="list-search-input ${inputClass}" placeholder="${placeholder}" autocomplete="off" enterkeyhint="search" />
+</div>`;
+
+    const listItemRowHtml = (type, r) => {
+      let meta =
+        type === "cables"
+          ? `${(r.path || []).length} pts · ${r.fiber_count} fibras`
+          : type === "terminals"
+            ? (() => {
+                const mount = terminalMountLabel(r);
+                const leg = !mount && (r.source_pon_id || r.source_olt_card_id) ? ponCascadeLabel(r) : "";
+                const mc = r.marker_color || "green";
+                const ml = { green: "M V", yellow: "M A", red: "M R" };
+                let m = "";
+                if (mount) m += escapeHtml(mount) + " · ";
+                else if (leg) m += escapeHtml(leg) + " (leg.) · ";
+                m += ml[mc] || mc;
+                if (r.drop_fiber) m += ` · TIA${r.drop_fiber}`;
+                return `${m} · ${Number(r.lat).toFixed(5)}, ${Number(r.lng).toFixed(5)}`;
+              })()
+            : `${Number(r.lat).toFixed(5)}, ${Number(r.lng).toFixed(5)}`;
+      if (type === "mufas") {
+        const pl = ponCascadeLabel(r);
+        if (pl) meta += ` · ${escapeHtml(pl)}`;
+      }
+      if (type === "cables" && r.fiber_spec) {
+        meta += ` · ${escapeHtml(r.fiber_spec)}`;
+      }
+      if (type === "cables" && (r.manga_label || r.splice_count)) {
+        meta += ` · ${escapeHtml(r.manga_label || "")}${r.splice_count ? " · " + r.splice_count + " empalmes" : ""}`;
+      }
+      if (type === "cables") {
+        const pl = ponCascadeLabel(r);
+        if (pl) meta += ` · ${escapeHtml(pl)}`;
+      }
+      const fiberBtn =
+        type === "cables" ? `<button type="button" data-act="fibers">Fibras</button>` : "";
+      return `<div class="item" data-fa-res="${type}" data-fa-rid="${r.id}">
           <div>
             <div class="title">${escapeHtml(r.name || "(sin nombre)")}</div>
             <div class="meta">${meta}</div>
@@ -3797,7 +4164,42 @@
             <button type="button" data-act="del" class="del">Borrar</button>
           </div>
         </div>`;
+    };
+
+    const block = (title, type, rows, emptyMsg) => {
+      let h = `<h2>${title}</h2>`;
+      if (type === "mufas" && rows.length) {
+        h += listSearchRowHtml("Filtrar mufas", "Buscar mufa por nombre o texto…", "js-mufa-list-filter");
+      }
+      if (type === "terminals" && rows.length) {
+        h += listSearchRowHtml("Filtrar terminales", "Buscar terminal por nombre o texto…", "js-terminal-list-filter");
+      }
+      if (type === "cables" && rows.length) {
+        h += listSearchRowHtml(
+          "Filtrar cables y mangas",
+          "Buscar cable, manga o fibras…",
+          "js-cable-list-filter",
+        );
+      }
+      if (!rows.length) {
+        h += `<p class="sub" style="margin:0 0 .5rem">${emptyMsg}</p>`;
+        return h;
+      }
+      if (type === "mufas") h += `<div class="list-items-mufa">`;
+      if (type === "terminals") h += `<div class="list-items-terminal">`;
+      if (type === "cables") h += `<div class="list-items-cable">`;
+      rows.forEach((r) => {
+        h += listItemRowHtml(type, r);
       });
+      if (type === "mufas") {
+        h += `</div><p class="sub list-filter-no-match" data-fa-filter="mufas" hidden>Sin coincidencias con la búsqueda.</p>`;
+      }
+      if (type === "terminals") {
+        h += `</div><p class="sub list-filter-no-match" data-fa-filter="terminals" hidden>Sin coincidencias con la búsqueda.</p>`;
+      }
+      if (type === "cables") {
+        h += `</div><p class="sub list-filter-no-match" data-fa-filter="cables" hidden>Sin coincidencias con la búsqueda.</p>`;
+      }
       return h;
     };
     el.innerHTML =
@@ -3805,11 +4207,40 @@
       block("Terminales", "terminals", cache.terminals, "Ningún terminal aún.") +
       block("Cables", "cables", cache.cables, "Ningún cable aún.");
 
+    function wireSidebarListFilter(inputClass, itemsSelector, noMatchSelector) {
+      const inp = el.querySelector(inputClass);
+      const nom = el.querySelector(noMatchSelector);
+      if (!inp || !nom) return;
+      const apply = () => {
+        const raw = inp.value.trim().toLowerCase();
+        const items = el.querySelectorAll(itemsSelector);
+        let nVis = 0;
+        items.forEach((node) => {
+          const hay = (node.textContent || "").toLowerCase();
+          const show = !raw || hay.includes(raw);
+          node.style.display = show ? "" : "none";
+          if (show) nVis += 1;
+        });
+        nom.hidden = !(raw && nVis === 0);
+      };
+      inp.addEventListener("input", apply);
+      inp.addEventListener("search", apply);
+    }
+
+    wireSidebarListFilter(".js-mufa-list-filter", ".list-items-mufa .item", '.list-filter-no-match[data-fa-filter="mufas"]');
+    wireSidebarListFilter(
+      ".js-terminal-list-filter",
+      ".list-items-terminal .item",
+      '.list-filter-no-match[data-fa-filter="terminals"]',
+    );
+    wireSidebarListFilter(".js-cable-list-filter", ".list-items-cable .item", '.list-filter-no-match[data-fa-filter="cables"]');
+
     el.querySelectorAll(".item").forEach((node) => {
       node.addEventListener("click", (ev) => {
         const btn = ev.target.closest("button");
-        const type = node.dataset.type;
-        const id = Number(node.dataset.id);
+        const type = node.dataset.faRes;
+        const id = Number(node.dataset.faRid);
+        if (!type || !Number.isFinite(id) || id <= 0) return;
         const row = findRow(type, id);
         if (!row) return;
         if (!btn) {
@@ -3833,7 +4264,10 @@
           openFiberModal(row);
         }
         if (act === "del") {
-          if (!confirm("¿Borrar este elemento?")) return;
+          const kindLabel =
+            type === "cables" ? "cable / manga" : type === "mufas" ? "mufa" : "terminal";
+          const title = (row.name != null && String(row.name).trim()) || `#${id}`;
+          if (!confirm(`¿Borrar ${kindLabel} «${title}»?`)) return;
           deleteItem(type, id);
         }
       });
@@ -3841,8 +4275,18 @@
   }
 
   function findRow(type, id) {
-    const list = type === "mufas" ? cache.mufas : type === "terminals" ? cache.terminals : cache.cables;
-    return list.find((x) => x.id === id);
+    if (type !== "mufas" && type !== "terminals" && type !== "poles" && type !== "cables")
+      return undefined;
+    const list =
+      type === "mufas"
+        ? cache.mufas
+        : type === "terminals"
+          ? cache.terminals
+          : type === "poles"
+            ? cache.poles || []
+            : cache.cables;
+    const nid = Number(id);
+    return list.find((x) => Number(x.id) === nid);
   }
 
   async function deleteItem(type, id) {
@@ -3851,8 +4295,10 @@
       if (type === "cables") removeCable(id);
       else removeMarker(type, id);
       await loadAll();
+      return true;
     } catch (e) {
       alert(e.message);
+      return false;
     }
   }
 
@@ -3860,6 +4306,12 @@
   const form = document.getElementById("modal-form");
 
   function showModal(show) {
+    /* Mismo z-index que el modal principal: cerrar splitter aquí (sin depender del orden de funciones). */
+    const splBd = document.getElementById("mufa-splitter-dlg-backdrop");
+    if (splBd) {
+      splBd.classList.remove("open");
+      splBd.setAttribute("aria-hidden", "true");
+    }
     backdrop.classList.toggle("open", show);
     backdrop.setAttribute("aria-hidden", show ? "false" : "true");
     if (!show) {
@@ -3870,7 +4322,22 @@
         th.hidden = true;
         th.textContent = "";
       }
+      const delEnt = document.getElementById("modal-del-entity");
+      if (delEnt) delEnt.hidden = true;
     }
+  }
+
+  function syncModalEntityDeleteButton() {
+    const btn = document.getElementById("modal-del-entity");
+    if (!btn) return;
+    const type = document.getElementById("f-type").value;
+    const idStr = document.getElementById("f-id").value;
+    const id = idStr !== "" && idStr != null ? Number(idStr) : 0;
+    const ok =
+      (type === "mufas" || type === "terminals" || type === "poles" || type === "cables") &&
+      Number.isFinite(id) &&
+      id > 0;
+    btn.hidden = !ok;
   }
 
   /**
@@ -3884,6 +4351,10 @@
     document.getElementById("modal-title").textContent = isNew ? "Nuevo edificio" : "Edificio";
     document.getElementById("f-type").value = "buildings";
     document.getElementById("f-id").value = isNew ? "" : String(rid);
+    {
+      const nameRow = document.getElementById("f-name-row");
+      if (nameRow) nameRow.style.display = "";
+    }
     document.getElementById("f-name").value = row.name != null && row.name !== "" ? row.name : "Edificio";
     document.getElementById("f-building-address").value = row.address != null ? row.address : "";
     document.getElementById("f-lat").value = row.lat != null && row.lat !== "" ? row.lat : "";
@@ -3921,6 +4392,8 @@
             }
           };
     }
+    syncPoleModalChrome("buildings", row);
+    syncModalEntityDeleteButton();
     showModal(true);
   }
 
@@ -4233,12 +4706,18 @@
       const pl = ponCascadeLabel(row);
       if (pl) tt += " · " + pl;
       document.getElementById("modal-title").textContent = tt;
+    } else if (type === "poles") {
+      /* Título y bloque de número: syncPoleModalChrome al final. */
     } else {
       document.getElementById("modal-title").textContent = "Cable";
     }
     document.getElementById("f-type").value = type;
     document.getElementById("f-id").value = row.id != null ? row.id : "";
-    document.getElementById("f-name").value = row.name || "";
+    {
+      const nameRow = document.getElementById("f-name-row");
+      if (nameRow) nameRow.style.display = type === "poles" ? "none" : "";
+    }
+    document.getElementById("f-name").value = type === "poles" ? "" : row.name || "";
     document.getElementById("f-notes").value = row.notes || "";
 
     document.getElementById("f-mufa-extra").style.display = type === "mufas" ? "block" : "none";
@@ -4302,6 +4781,10 @@
       const sp = document.getElementById("f-term-splitter");
       if (sp) sp.value = row.splitter_ref != null ? row.splitter_ref : "";
     }
+    if (type === "poles") {
+      document.getElementById("f-lat").value = row.lat != null ? row.lat : "";
+      document.getElementById("f-lng").value = row.lng != null ? row.lng : "";
+    }
     if (type === "cables") {
       const traceHint = document.getElementById("f-cable-trace-hint");
       if (traceHint) {
@@ -4337,13 +4820,54 @@
       renderCableAnchorHints(row.path && row.path.length >= 2 ? row.path : null);
     }
 
+    syncPoleModalChrome(type, row);
     state.pendingPoint = null;
+    syncModalEntityDeleteButton();
     showModal(true);
   }
 
+  /** Al crear mufa/manga: siguiente N en Mufa-NN_******* / Manga-NN_******* (máximo en caché + 1, o cantidad + 1). */
+  function suggestNewMufaOrMangaName(kind) {
+    const pad2 = (x) => String(Math.max(1, Math.floor(x))).padStart(2, "0");
+    if (kind === "mufas") {
+      const list = cache.mufas || [];
+      let maxN = 0;
+      const re = /^Mufa-(\d+)_/i;
+      for (const m of list) {
+        const mm = (m.name != null ? String(m.name).trim() : "").match(re);
+        if (mm) maxN = Math.max(maxN, parseInt(mm[1], 10));
+      }
+      const n = maxN > 0 ? maxN + 1 : list.length + 1;
+      return `Mufa-${pad2(n)}_*******`;
+    }
+    if (kind === "cables") {
+      const list = cache.cables || [];
+      let maxN = 0;
+      const re = /^Manga-(\d+)_/i;
+      for (const c of list) {
+        const mm = (c.name != null ? String(c.name).trim() : "").match(re);
+        if (mm) maxN = Math.max(maxN, parseInt(mm[1], 10));
+      }
+      const n = maxN > 0 ? maxN + 1 : list.length + 1;
+      return `Manga-${pad2(n)}_*******`;
+    }
+    return "";
+  }
+
   async function openNewAtPoint(type, lat, lng) {
-    await openModalFromRow(type, {
-      name: type === "mufas" ? "Mufa" : "Terminal",
+    if (type === "poles") {
+      await openModalFromRow("poles", {
+        name: "",
+        lat,
+        lng,
+        notes: "",
+      });
+      document.getElementById("f-id").value = "";
+      syncModalEntityDeleteButton();
+      return;
+    }
+    const base = {
+      name: type === "mufas" ? suggestNewMufaOrMangaName("mufas") : "Terminal",
       lat,
       lng,
       model: "",
@@ -4360,8 +4884,33 @@
       splitter_enabled: 0,
       splitters_json: "[]",
       splitter_use_fiber_color: 0,
-    });
+    };
+    await openModalFromRow(type, base);
     document.getElementById("f-id").value = "";
+    syncModalEntityDeleteButton();
+  }
+
+  /** Mufa / terminal / poste: colocar en mapa (también si el clic cayó en marcador o cable). */
+  function placementClickAt(lat, lng) {
+    const m = state.mode;
+    if (m !== "mufa" && m !== "terminal" && m !== "pole") return;
+    if (state.placementOpening) {
+      setStatus("Abriendo formulario… espere un momento y vuelva a hacer clic si no aparece.");
+      return;
+    }
+    void (async () => {
+      state.placementOpening = true;
+      try {
+        if (m === "mufa") await openNewAtPoint("mufas", lat, lng);
+        else if (m === "terminal") await openNewAtPoint("terminals", lat, lng);
+        else if (m === "pole") await openNewAtPoint("poles", lat, lng);
+      } catch (err) {
+        console.error(err);
+        alert(err.message || String(err));
+      } finally {
+        state.placementOpening = false;
+      }
+    })();
   }
 
   async function openNewCable(path) {
@@ -4369,7 +4918,11 @@
     document.getElementById("modal-title").textContent = "Nuevo cable / manga";
     document.getElementById("f-type").value = "cables";
     document.getElementById("f-id").value = "";
-    document.getElementById("f-name").value = "Manga";
+    {
+      const nameRow = document.getElementById("f-name-row");
+      if (nameRow) nameRow.style.display = "";
+    }
+    document.getElementById("f-name").value = suggestNewMufaOrMangaName("cables");
     document.getElementById("f-notes").value = "";
     document.getElementById("f-fibers").value = 12;
     document.getElementById("f-color").value = "#2563eb";
@@ -4393,6 +4946,8 @@
     document.getElementById("f-latlng-row").style.display = "none";
     document.getElementById("btn-fiber-map").style.display = "none";
     state.pendingPoint = { path };
+    syncPoleModalChrome("cables", {});
+    syncModalEntityDeleteButton();
     showModal(true);
     renderCableAnchorHints(path);
   }
@@ -4650,6 +5205,11 @@
     const idStr = document.getElementById("f-id").value;
     const id = idStr ? Number(idStr) : 0;
 
+    const mapScopedNewTypes = ["buildings", "mufas", "terminals", "poles", "cables"];
+    if (mapScopedNewTypes.includes(type) && !id && !requireActiveMapScopeForNewElement()) {
+      return;
+    }
+
     try {
       if (type === "buildings") {
         const latRaw = document.getElementById("f-lat").value.trim();
@@ -4732,6 +5292,17 @@
         };
         if (id) await api("PUT", "terminals", body);
         else await api("POST", "terminals", body);
+      } else if (type === "poles") {
+        const body = {
+          id,
+          name: document.getElementById("f-name").value,
+          lat: parseFloat(document.getElementById("f-lat").value),
+          lng: parseFloat(document.getElementById("f-lng").value),
+          notes: document.getElementById("f-notes").value,
+          ...(id ? mapScopeForPutRow("poles", findRow("poles", id)) : mapScopeForCreate()),
+        };
+        if (id) await api("PUT", "poles", body);
+        else await api("POST", "poles", body);
       } else if (type === "cables") {
         const path = state.pendingPoint && state.pendingPoint.path ? state.pendingPoint.path : null;
         const fiberMap = normalizeFiberMap(
@@ -4782,6 +5353,37 @@
     } catch (e) {
       alert(e.message);
     }
+  });
+
+  document.getElementById("modal-del-entity")?.addEventListener("click", async () => {
+    const type = document.getElementById("f-type").value;
+    const idStr = document.getElementById("f-id").value;
+    const id = idStr ? Number(idStr) : 0;
+    if (!id || (type !== "mufas" && type !== "terminals" && type !== "poles" && type !== "cables"))
+      return;
+    const row = findRow(type, id);
+    if (!row) {
+      alert("No se encontró el elemento en la lista actual.");
+      return;
+    }
+    const kindLabel =
+      type === "cables"
+        ? "cable / manga"
+        : type === "mufas"
+          ? "mufa"
+          : type === "poles"
+            ? "poste"
+            : "terminal";
+    const title =
+      type === "poles"
+        ? `Poste nº ${poleCreationOrderNumber(row)}`
+        : (row.name != null && String(row.name).trim()) || `#${id}`;
+    if (!confirm(`¿Borrar ${kindLabel} «${title}»?`)) return;
+    if (!(await deleteItem(type, id))) return;
+    showModal(false);
+    state.pendingPoint = null;
+    clearCableDraft(true);
+    setMode("");
   });
 
   document.getElementById("modal-cancel").addEventListener("click", () => {
@@ -4838,16 +5440,36 @@
     googleMapsLeafletPreparePromise = (async () => {
       if (!(window.google && window.google.maps)) {
         await new Promise((resolve, reject) => {
+          const cbName =
+            "__faGmCb_" +
+            Date.now().toString(36) +
+            "_" +
+            Math.random().toString(36).slice(2, 10);
+          const cleanup = () => {
+            try {
+              delete window[cbName];
+            } catch (_) {
+              try {
+                window[cbName] = undefined;
+              } catch (_) {}
+            }
+          };
+          window[cbName] = function () {
+            cleanup();
+            resolve();
+          };
           const s = document.createElement("script");
-          s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`;
           s.async = true;
-          s.onload = () => resolve();
-          s.onerror = () =>
+          s.onerror = () => {
+            cleanup();
             reject(
               new Error(
                 "No se cargó maps.googleapis.com. Revise la clave y que «Maps JavaScript API» esté activa."
               )
             );
+          };
+          /* loading=async exige callback (no basarse solo en onload del script). */
+          s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&loading=async&callback=${encodeURIComponent(cbName)}`;
           document.head.appendChild(s);
         });
       }
@@ -5012,7 +5634,8 @@
               ? "hybrid"
               : "roadmap";
         if (!byId[id]) {
-          byId[id] = L.gridLayer.googleMutant({ type: gmType });
+          /* interactive:false: si no, Google captura el clic y no llega a map.on("click") (no abre mufa/terminal). */
+          byId[id] = L.gridLayer.googleMutant({ type: gmType, interactive: false });
         }
         if (state.baseTileLayer) map.removeLayer(state.baseTileLayer);
         state.baseTileLayer = byId[id];
@@ -5277,7 +5900,8 @@
 
   function initMap() {
     state.mapViewPersistenceEnabled = false;
-    state.map = L.map("map", { preferCanvas: true, maxZoom: 22 }).setView([40.4168, -3.7038], 6);
+    /* preferCanvas: false — con true los clics en polilíneas/canvas a veces no llegan al mapa (Leaflet). */
+    state.map = L.map("map", { preferCanvas: false, maxZoom: 22 }).setView([40.4168, -3.7038], 6);
 
     initMapBasemapControl(state.map);
 
@@ -5286,6 +5910,7 @@
     state.buildingLayer = L.layerGroup().addTo(state.map);
     state.mufaLayer = L.layerGroup().addTo(state.map);
     state.terminalLayer = L.layerGroup().addTo(state.map);
+    state.poleLayer = L.layerGroup().addTo(state.map);
     state.cableLayer = L.layerGroup().addTo(state.map);
 
     initMapSearchControl(state.map);
@@ -5347,34 +5972,45 @@
         }
         return;
       }
-      if (state.mode === "mufa") {
-        await openNewAtPoint("mufas", e.latlng.lat, e.latlng.lng);
-      } else if (state.mode === "terminal") {
-        await openNewAtPoint("terminals", e.latlng.lat, e.latlng.lng);
-      } else if (state.mode === "cable") {
+      if (state.mode === "mufa" || state.mode === "terminal" || state.mode === "pole") {
+        try {
+          if (typeof localStorage !== "undefined" && localStorage.getItem("FA_DEBUG_PLACEMENT") === "1") {
+            console.info("[FiberAtlas placement] map click", state.mode, e.latlng);
+          }
+        } catch (_) {}
+        placementClickAt(e.latlng.lat, e.latlng.lng);
+        return;
+      }
+      if (state.mode === "cable") {
         appendCableDraftVertex(e.latlng.lat, e.latlng.lng);
       }
     });
   }
 
-  document.querySelector(".tools")?.addEventListener("click", (ev) => {
-    const btn = ev.target.closest(".tools button[data-mode]");
+  wireMapSidebarAccordions();
+
+  document.querySelector("#panel-map .tools")?.addEventListener("click", (ev) => {
+    const t = ev.target;
+    const el = t && t.nodeType === 1 ? t : t && t.parentElement;
+    const btn = el && typeof el.closest === "function" ? el.closest(".tools button[data-mode]") : null;
     if (!btn || btn.disabled) return;
     if (btn.id === "mode-cable") clearCableDraft(false);
     const raw = btn.getAttribute("data-mode");
     setMode(raw === null ? "" : raw);
   });
 
-  document.getElementById("cable-finish").addEventListener("click", async () => {
+  document.getElementById("cable-finish")?.addEventListener("click", async () => {
     if (state.cableDraft.length < 2) return;
     const path = state.cableDraft.map((p) => [p[0], p[1]]);
     await openNewCable(path);
   });
 
-  document.getElementById("cable-cancel").addEventListener("click", () => {
+  document.getElementById("cable-cancel")?.addEventListener("click", () => {
     clearCableDraft(true);
-    document.getElementById("cable-finish").disabled = true;
-    document.getElementById("cable-cancel").disabled = true;
+    const fin = document.getElementById("cable-finish");
+    const can = document.getElementById("cable-cancel");
+    if (fin) fin.disabled = true;
+    if (can) can.disabled = true;
     setStatus("Trazado cancelado.");
   });
 

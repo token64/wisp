@@ -16,6 +16,7 @@
 
 html {
   height: 100%;
+  color-scheme: dark;
 }
 
 body {
@@ -1031,12 +1032,15 @@ button.tree-del:hover {
 
 .app {
   display: flex;
+  min-height: 0;
   height: 100%;
 }
 
 .sidebar {
   width: 300px;
   min-width: 280px;
+  min-height: 0;
+  max-height: 100%;
   background: var(--panel);
   border-right: 1px solid var(--border);
   display: flex;
@@ -1059,6 +1063,160 @@ button.tree-del:hover {
   font-size: 0.8rem;
   color: var(--muted);
   line-height: 1.35;
+}
+
+/* Mapa: acordeón del panel (Red acceso / herramientas / listas) */
+.sidebar-acc-stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0 0 0.35rem;
+  overflow: hidden;
+}
+
+.sidebar-accordion {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.sidebar-accordion.sidebar-acc-lists {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.sidebar-accordion:not(.sidebar-acc-lists) {
+  flex: 0 0 auto;
+}
+
+/* Cabeceras acordeón: reset explícito (Edge/Chrome a veces pintan <button> claro sin color-scheme / appearance). */
+#panel-map .sidebar .sidebar-accordion > button.sidebar-acc-header {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #141c28;
+  background-image: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-accordion.is-collapsed .sidebar-acc-header {
+  border-bottom: none;
+}
+
+#panel-map .sidebar .sidebar-accordion > button.sidebar-acc-header:hover {
+  background-color: rgba(59, 130, 246, 0.18);
+}
+
+#panel-map .sidebar .sidebar-accordion > button.sidebar-acc-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.sidebar-acc-chevron {
+  display: inline-block;
+  font-size: 0.6rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+  color: var(--muted);
+}
+
+.sidebar-accordion.is-collapsed .sidebar-acc-chevron {
+  transform: rotate(-90deg);
+}
+
+.sidebar-acc-title {
+  flex: 1;
+}
+
+.sidebar-acc-body {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Asegurar que [hidden] no quede anulado por display:flex de .sidebar-acc-body (algunos navegadores / cascadas). */
+#panel-map .sidebar .sidebar-acc-body[hidden] {
+  display: none !important;
+}
+
+.sidebar-acc-red .sidebar-acc-body {
+  max-height: min(38vh, 300px);
+  overflow-y: auto;
+}
+
+.sidebar-acc-tools .sidebar-acc-body {
+  max-height: min(44vh, 360px);
+  overflow-y: auto;
+}
+
+.sidebar-accordion.sidebar-acc-lists .sidebar-acc-body {
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.sidebar-acc-lists-inner {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-hierarchy-in-acc {
+  margin-bottom: 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0.65rem 0.65rem;
+}
+
+.map-hierarchy-in-acc .map-hierarchy-body {
+  max-height: none;
+}
+
+.sidebar-acc-tools .tools {
+  border-bottom: none;
+}
+
+.sidebar-acc-tools .map-sidebar-hint {
+  margin: 0;
+  padding: 0 1rem 0.65rem;
+}
+
+.sidebar-acc-lists-inner .list-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.sidebar > .status-bar {
+  flex-shrink: 0;
 }
 
 .tools {
@@ -1374,6 +1532,53 @@ button.tree-del:hover {
   margin-top: 0;
 }
 
+.list-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.45rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.list-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.list-search-svg {
+  display: block;
+}
+
+.list-search-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0.2rem 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.list-search-input::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.list-filter-no-match {
+  margin: 0.25rem 0 0.5rem !important;
+  color: var(--muted);
+}
+
 .item {
   padding: 0.5rem 0.6rem;
   margin-bottom: 0.35rem;
@@ -1446,6 +1651,32 @@ button.tree-del:hover {
   display: block;
   width: 44px !important;
   height: 44px !important;
+}
+
+.fa-pole-leaflet-icon {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+.fa-pole-leaflet-icon img {
+  display: block;
+  width: 28px !important;
+  height: 34px !important;
+}
+
+.f-pole-extra {
+  margin: 0.35rem 0 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(59, 130, 246, 0.08);
+}
+.pole-order-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.f-pole-extra .sub {
+  margin: 0;
 }
 
 /* Búsqueda ciudad / coordenadas (control superior izquierda, debajo del zoom) */
@@ -1526,6 +1757,70 @@ button.tree-del:hover {
   color: #0369a1;
 }
 
+/* Resumen proyecto / sección (antes en sidebar mapa; ahora también en Ajustes) */
+.map-project-summary {
+  flex-shrink: 0;
+  padding: 0.55rem 0.75rem 0.65rem;
+  border-top: 1px solid var(--border);
+  background: rgba(15, 20, 25, 0.65);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+#panel-settings .settings-wrap .map-project-summary-settings {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.map-project-summary-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 0.4rem;
+}
+
+.map-project-summary-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 0.75rem;
+}
+
+.map-project-summary-stats li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px dashed rgba(45, 58, 77, 0.6);
+  padding-bottom: 0.2rem;
+}
+
+.map-project-summary-stats .k {
+  color: var(--muted);
+}
+
+.map-project-summary-stats .v {
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-project-summary-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.map-project-summary-empty {
+  margin: 0;
+}
+
 .status-bar {
   padding: 0.35rem 1rem;
   font-size: 0.75rem;
@@ -1603,6 +1898,28 @@ button.tree-del:hover {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+}
+
+.modal .modal-actions-row {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.modal .modal-actions-spacer {
+  flex: 1;
+  min-width: 0.25rem;
+}
+
+.modal .modal-entity-del {
+  border: 1px solid #b91c1c !important;
+  color: #fca5a5 !important;
+  background: transparent !important;
+  font-size: 0.72rem !important;
+  padding: 0.28rem 0.5rem !important;
+}
+
+.modal .modal-entity-del:hover {
+  background: rgba(185, 28, 28, 0.18) !important;
 }
 
 .modal .actions-row button {

@@ -10,7 +10,7 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/app.css?v=20260424" />
   </head>
   <body>
     <div class="app-shell">
@@ -69,52 +69,98 @@
               <span id="map-work-context-text" class="map-work-context-text"></span>
             </div>
           </header>
-          <section class="map-hierarchy" aria-labelledby="map-hierarchy-title">
-            <h2 id="map-hierarchy-title" class="map-hierarchy-title">Red acceso</h2>
-            <p class="sub map-hierarchy-micro">
-              <strong>1)</strong> Elija fila en el árbol. <strong>2)</strong> Cree con los botones o use las herramientas del mapa
-              (＋ Site = GPS). «Site suelto» = sin POP físico.
-            </p>
-            <div id="map-active-site-banner" class="map-active-site-banner map-ctx-card" hidden></div>
-            <div class="map-hierarchy-toolbar">
-              <span class="map-h-toolbar-label">Crear</span>
-              <div class="map-h-toolbar-btns">
-                <button type="button" id="map-btn-add-building" class="btn-sm">＋ Edificio</button>
-                <button type="button" id="map-btn-site-in-building" class="btn-sm btn-primary">
-                  ＋ Site (en POP)
-                </button>
-                <button type="button" id="map-btn-add-orphan-site" class="btn-sm">＋ Site suelto</button>
-                <button type="button" id="map-btn-add-olt" class="btn-sm">＋ OLT</button>
-                <button type="button" id="map-btn-hierarchy-refresh" class="btn-sm" title="Actualizar árbol">
-                  ↻
-                </button>
+
+          <div class="sidebar-acc-stack">
+            <div class="sidebar-accordion sidebar-acc-red is-collapsed" data-acc="red">
+              <button
+                type="button"
+                class="sidebar-acc-header"
+                id="acc-btn-red"
+                aria-expanded="false"
+                aria-controls="acc-panel-red"
+              >
+                <span class="sidebar-acc-chevron" aria-hidden="true">▼</span>
+                <span class="sidebar-acc-title">Red acceso</span>
+              </button>
+              <div class="sidebar-acc-body" id="acc-panel-red" role="region" aria-labelledby="acc-btn-red" hidden>
+                <section class="map-hierarchy map-hierarchy-in-acc" aria-label="Árbol edificio, site y OLT">
+                  <p class="sub map-hierarchy-micro">
+                    <strong>1)</strong> Elija fila en el árbol. <strong>2)</strong> Cree con los botones o use las herramientas del mapa
+                    (＋ Site = GPS). «Site suelto» = sin POP físico.
+                  </p>
+                  <div id="map-active-site-banner" class="map-active-site-banner map-ctx-card" hidden></div>
+                  <div class="map-hierarchy-toolbar">
+                    <span class="map-h-toolbar-label">Crear</span>
+                    <div class="map-h-toolbar-btns">
+                      <button type="button" id="map-btn-add-building" class="btn-sm">＋ Edificio</button>
+                      <button type="button" id="map-btn-site-in-building" class="btn-sm btn-primary">
+                        ＋ Site (en POP)
+                      </button>
+                      <button type="button" id="map-btn-add-orphan-site" class="btn-sm">＋ Site suelto</button>
+                      <button type="button" id="map-btn-add-olt" class="btn-sm">＋ OLT</button>
+                      <button type="button" id="map-btn-hierarchy-refresh" class="btn-sm" title="Actualizar árbol">↻</button>
+                    </div>
+                  </div>
+                  <div id="map-hierarchy-body" class="map-hierarchy-body"></div>
+                  <p class="sub map-hierarchy-link">
+                    <button type="button" class="btn-link" id="map-open-inventory">Inventario (PON, potencias)…</button>
+                  </p>
+                </section>
               </div>
             </div>
-            <div id="map-hierarchy-body" class="map-hierarchy-body"></div>
-            <p class="sub map-hierarchy-link">
-              <button type="button" class="btn-link" id="map-open-inventory">Inventario (PON, potencias)…</button>
-            </p>
-          </section>
-          <div class="tools">
-            <button type="button" id="mode-none" class="active" data-mode="">Navegar</button>
-            <button type="button" id="mode-org-building" data-mode="org_building" title="Clic en mapa: crea edificio con referencia GPS">
-              ＋ Edificio
-            </button>
-            <button type="button" id="mode-org-site" data-mode="org_site" title="Tras elegir edificio en el árbol, clic en mapa: crea site">
-              ＋ Site
-            </button>
-            <button type="button" id="mode-mufa" data-mode="mufa">＋ Mufa</button>
-            <button type="button" id="mode-terminal" data-mode="terminal">＋ Terminal</button>
-            <button type="button" id="mode-cable" data-mode="cable">＋ Cable</button>
-            <button type="button" id="cable-finish" class="danger-outline" disabled>
-              Finalizar cable
-            </button>
-            <button type="button" id="cable-cancel" disabled>Cancelar trazado</button>
+
+            <div class="sidebar-accordion sidebar-acc-tools is-collapsed" data-acc="tools">
+              <button
+                type="button"
+                class="sidebar-acc-header"
+                id="acc-btn-tools"
+                aria-expanded="false"
+                aria-controls="acc-panel-tools"
+              >
+                <span class="sidebar-acc-chevron" aria-hidden="true">▼</span>
+                <span class="sidebar-acc-title">Herramientas del mapa</span>
+              </button>
+              <div class="sidebar-acc-body" id="acc-panel-tools" role="region" aria-labelledby="acc-btn-tools" hidden>
+                <div class="tools">
+                  <button type="button" id="mode-none" class="active" data-mode="">Navegar</button>
+                  <button type="button" id="mode-org-building" data-mode="org_building" title="Clic en mapa: crea edificio con referencia GPS">
+                    ＋ Edificio
+                  </button>
+                  <button type="button" id="mode-org-site" data-mode="org_site" title="Tras elegir edificio en el árbol, clic en mapa: crea site">
+                    ＋ Site
+                  </button>
+                  <button type="button" id="mode-mufa" data-mode="mufa">＋ Mufa</button>
+                  <button type="button" id="mode-terminal" data-mode="terminal">＋ Terminal</button>
+                  <button type="button" id="mode-pole" data-mode="pole" title="Poste de paso (referencia en mapa, sin PON)">＋ Poste</button>
+                  <button type="button" id="mode-cable" data-mode="cable">＋ Cable</button>
+                  <button type="button" id="cable-finish" class="danger-outline" disabled>
+                    Finalizar cable
+                  </button>
+                  <button type="button" id="cable-cancel" disabled>Cancelar trazado</button>
+                </div>
+                <p class="sub map-sidebar-hint no-print">
+                  Fondo del mapa, claves API e impresión están en <strong>Ajustes</strong> (barra izquierda).
+                </p>
+              </div>
+            </div>
+
+            <div class="sidebar-accordion sidebar-acc-lists" data-acc="lists">
+              <button
+                type="button"
+                class="sidebar-acc-header"
+                id="acc-btn-lists"
+                aria-expanded="true"
+                aria-controls="acc-panel-lists"
+              >
+                <span class="sidebar-acc-chevron" aria-hidden="true">▼</span>
+                <span class="sidebar-acc-title">Mufas, terminales y cables</span>
+              </button>
+              <div class="sidebar-acc-body sidebar-acc-lists-inner" id="acc-panel-lists" role="region" aria-labelledby="acc-btn-lists">
+                <div class="list-wrap" id="lists"></div>
+              </div>
+            </div>
           </div>
-          <p class="sub map-sidebar-hint no-print">
-            Fondo del mapa, claves API e impresión están en <strong>Ajustes</strong> (barra izquierda).
-          </p>
-          <div class="list-wrap" id="lists"></div>
+
           <div class="status-bar" id="status">Listo.</div>
         </aside>
         <div id="map" role="application" aria-label="Mapa"></div>
@@ -394,6 +440,11 @@
             <button type="button" id="map-btn-print-map" class="btn-sm btn-primary">Imprimir mapa (A4)</button>
           </div>
         </section>
+        <section
+          class="map-project-summary map-project-summary-settings no-print"
+          id="map-project-summary"
+          aria-label="Resumen del proyecto y sección activos"
+        ></section>
       </div>
     </div>
 
@@ -471,11 +522,13 @@
     <div class="modal-backdrop" id="modal-backdrop" aria-hidden="true">
       <div class="modal modal-wide" role="dialog" aria-modal="true">
         <h3 id="modal-title">Editar</h3>
-        <form id="modal-form">
+        <form id="modal-form" novalidate>
           <input type="hidden" id="f-id" />
           <input type="hidden" id="f-type" />
-          <label for="f-name">Nombre</label>
-          <input type="text" id="f-name" autocomplete="off" />
+          <div id="f-name-row">
+            <label for="f-name">Nombre</label>
+            <input type="text" id="f-name" autocomplete="off" />
+          </div>
 
           <div class="row2" id="f-latlng-row">
             <div>
@@ -690,10 +743,19 @@
             </div>
           </div>
 
-          <label for="f-notes">Notas</label>
-          <textarea id="f-notes"></textarea>
+          <div id="f-pole-extra" class="f-pole-extra" style="display: none" aria-live="polite">
+            <p class="pole-order-title" id="f-pole-order-title"></p>
+            <p class="sub" id="f-pole-order-hint"></p>
+          </div>
 
-          <div class="actions-row">
+          <label for="f-notes">Notas</label>
+          <textarea id="f-notes" placeholder=""></textarea>
+
+          <div class="actions-row modal-actions-row">
+            <button type="button" class="btn-sm modal-entity-del" id="modal-del-entity" hidden>
+              Borrar
+            </button>
+            <span class="modal-actions-spacer" aria-hidden="true"></span>
             <button type="button" class="btn-secondary" id="modal-cancel">Cerrar</button>
             <button type="button" class="btn-secondary" id="btn-fiber-map" style="display: none">
               Mapa de fibras…
@@ -797,6 +859,6 @@
       window.FIBER_ATLAS_GOOGLE_MAPS_KEY = window.FIBER_ATLAS_GOOGLE_MAPS_KEY || "";
     </script>
     <script src="js/config.local.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/app.js?v=20260424"></script>
   </body>
 </html>

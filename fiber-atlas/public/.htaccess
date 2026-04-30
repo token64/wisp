@@ -1,7 +1,6 @@
-# Fiber Atlas — público estático + PHP en ../api/
-# Evita 403 por reglas de autorización y asegura index al abrir /public/
+# Fiber Atlas - public (ASCII only; evita problemas con Apache en Windows)
+DirectoryIndex index.html index.php
+
 <IfModule mod_authz_core.c>
   Require all granted
 </IfModule>
-DirectoryIndex index.html
-Options +FollowSymLinks -Indexes
